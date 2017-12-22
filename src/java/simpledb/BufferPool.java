@@ -79,13 +79,22 @@ public class BufferPool {
         // some code goes here
 	if (pid == null)
 	    throw new DbException("null pageId");
-	for (Page p: pages) {
+	for (int i=0; i<nowcache; i++) {
+	    Page p = pages[i];
 	    if (pid.equals(p.getId())) {
 		return p;
 	    }
 	}
-
-        return null;
+	
+	if (nowcache >= numPages)
+	    throw new DbEXception("no left pages in memory");
+	else {
+	    Page p = HeapFile.readPage(pid);
+	    pages[nowcache] = p;
+	    nowcache++;
+	    return p;
+	}
+	
     }
 
     /**

@@ -17,6 +17,26 @@ public class HeapFile implements DbFile {
 
     private File file;
     private TupleDesc schema;
+
+    private class HeapIterator extends AbstractDbFileIterator {
+	int pid;
+	boolean started;
+	TransactionId tid;
+	LinkedList<Tuple> tuples;
+
+	public HeapIterator(t_id) {
+	    boolean started = false;
+	    
+	}
+	
+	public void open()
+	    throws DbException, TransactionAbortedException {
+	    started = true;
+	    pid = 0;
+	    Page p = BufferPool.getPage(tid, pid, perm);
+	    
+	}
+    }
     
     /**
      * Constructs a heap file backed by the specified file.
@@ -68,7 +88,14 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
         // some code goes here
-        return null;
+	
+	int pgNo = pid.getPageNumber();
+	int offset = pgNo * BufferPool.pageSize();
+	FileInputStream fis = new FileInputStream(file);
+	byte[] b = new byte[BufferPool.pageSize()];
+	read(b, offset, BufferPool.pageSize()];
+	
+        return new HeapPage(pid, b);
     }
 
     // see DbFile.java for javadocs
@@ -82,7 +109,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return 0;
+        return file.length / BufferPool.pageSize();
     }
 
     // see DbFile.java for javadocs
@@ -104,6 +131,7 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
+	
         return null;
     }
 

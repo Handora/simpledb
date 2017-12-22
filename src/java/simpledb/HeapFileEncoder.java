@@ -165,7 +165,6 @@ public class HeapFileEncoder {
             
         } else if (c == -1) {
             done = true;
-            
         } else {
             buf[curpos++] = (char)c;
             continue;
