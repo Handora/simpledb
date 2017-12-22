@@ -31,7 +31,7 @@ public class BufferPool {
 
     /** Page storage */
     private static Page[] pages;
-    public static nowCache;
+    private static int nowCache;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -41,9 +41,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // some code goes here
 	this.numPages = numPages;
-	pages = new Page[numPage];
-	for (Page p: pages)
-	    p = new Page();
+	pages = new Page[numPages];
 	nowCache = 0;
     }
 
