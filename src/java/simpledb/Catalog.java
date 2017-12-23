@@ -23,7 +23,7 @@ public class Catalog {
      * Creates a new, empty catalog.
      */
     
-    private static class Table {
+    private  class Table {
 	DbFile file;
 	String name;
 	String primaryKey;

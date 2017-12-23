@@ -5,7 +5,7 @@ import java.util.NoSuchElementException;
 /** Helper for implementing DbFileIterators. Handles hasNext()/next() logic. */
 public abstract class AbstractDbFileIterator implements DbFileIterator {
 
-	public boolean hasNext() throws DbException, TransactionAbortedException {
+    public boolean hasNext() throws DbException, TransactionAbortedException {
         if (next == null) next = readNext();
         return next != null;
     }
