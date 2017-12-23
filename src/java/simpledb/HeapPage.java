@@ -321,9 +321,12 @@ public class HeapPage implements Page {
     public Iterator<Tuple> iterator() {
         // some code goes here
 	ArrayList<Tuple> tps = new ArrayList<>();
-	for (Tuple t: tps) {
-	    Tuple tmp = t;
-	    tps.add(tmp);
+	for (int i=0; i<numSlots; i++) {
+	    int n = i / 8; // num
+	    int m = i % 8; // offset
+	    if ((header[n] & (1<<m)) != 0) {
+		tps.add(tuples[i]);
+	    }
 	}
         return tps.iterator();
     }

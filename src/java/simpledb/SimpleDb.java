@@ -25,19 +25,19 @@ public class SimpleDb {
                 String[] typeStringAr = typeString.split(",");
                 if (typeStringAr.length!=numOfAttributes)
                 {
-                        System.err.println("The number of types does not agree with the number of columns");
-                        return;
+                    System.err.println("The number of types does not agree with the number of columns");
+                    return;
                 }
                 int index=0;
                 for (String s: typeStringAr) {
-                        if (s.toLowerCase().equals("int"))
-                            ts[index++]=Type.INT_TYPE;
-                        else if (s.toLowerCase().equals("string"))
-                                ts[index++]=Type.STRING_TYPE;
-                            else {
-                                System.err.println("Unknown type " + s);
-                                return;
-                            }
+                    if (s.toLowerCase().equals("int"))
+                       ts[index++]=Type.INT_TYPE;
+                    else if (s.toLowerCase().equals("string"))
+                        ts[index++]=Type.STRING_TYPE;
+                    else {
+                        System.err.println("Unknown type " + s);
+                        return;
+                    }
                 }
                 if (args.length==5)
                     fieldSeparator=args[4].charAt(0);

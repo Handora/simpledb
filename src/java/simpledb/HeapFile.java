@@ -33,6 +33,9 @@ public class HeapFile implements DbFile {
 	    tuples = new LinkedList<>();
             pid = 0;
             HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
+	    if (p == null) {
+		return;
+	    }
 	    Iterator<Tuple> it = p.iterator();
 	    while (it.hasNext()) {
 		tuples.add(it.next());
@@ -52,8 +55,9 @@ public class HeapFile implements DbFile {
 		    return null;
 		} else {
 		    HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
-		    if (p == null)
+		    if (p == null) {
 			return null;
+		    }
 		    Iterator<Tuple> it = p.iterator();
 		    while (it.hasNext()) {
 			tuples.add(it.next());
@@ -153,7 +157,8 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return (int)file.length() / BufferPool.getPageSize();
+        return (int)file.length() / BufferPool.getPageSize()
+	    + ((int)file.length() % BufferPool.getPageSize() == 0 ? 0:1);
     }
 
     // see DbFile.java for javadocs
