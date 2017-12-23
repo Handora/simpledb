@@ -11,6 +11,11 @@ public class SeqScan implements OpIterator {
 
     private static final long serialVersionUID = 1L;
 
+    TransactionId transId;
+    int tableId;
+    String tableAlias;
+    HeapFile.HeapIterator heapFileIterator = null; 
+    
     /**
      * Creates a sequential scan over the specified table as a part of the
      * specified transaction.
@@ -29,6 +34,9 @@ public class SeqScan implements OpIterator {
      */
     public SeqScan(TransactionId tid, int tableid, String tableAlias) {
         // some code goes here
+	this.transId = tid;
+	this.tableId = tableid;
+	this.tableAlias = tableAlias;
     }
 
     /**
@@ -37,16 +45,16 @@ public class SeqScan implements OpIterator {
      *       be the actual name of the table in the catalog of the database
      * */
     public String getTableName() {
-        return null;
+	// some code goes here
+        return Database.getCatalog().getTableName(tableId);
     }
 
     /**
      * @return Return the alias of the table this operator scans.
      * */
-    public String getAlias()
-    {
+    public String getAlias() {
         // some code goes here
-        return null;
+        return tableAlias;
     }
 
     /**
@@ -63,6 +71,8 @@ public class SeqScan implements OpIterator {
      */
     public void reset(int tableid, String tableAlias) {
         // some code goes here
+	this.tableId = tableid;
+	this.tableAlias = tableAlias;
     }
 
     public SeqScan(TransactionId tid, int tableId) {
@@ -71,6 +81,9 @@ public class SeqScan implements OpIterator {
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+	HeapFile heapFile = (HeapFile)Database.getCatalog().getDatabaseFile(tableId);
+	heapFileIterator = (HeapFile.HeapIterator)heapFile.iterator(transId);
+	heapFileIterator.open();
     }
 
     /**
@@ -85,26 +98,46 @@ public class SeqScan implements OpIterator {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+	// this is deep copy according to the tupleDesc implementation
+	TupleDesc schema = Database.getCatalog().getTupleDesc(tableId);
+	TupleDesc another = null;
+	String[] names = new String[schema.numFields()];
+	Type[] types = new Type[schema.numFields()];
+	Iterator<TupleDesc.TDItem> it = schema.iterator();;
+	int i=0;
+	
+	while (it.hasNext()) {
+	    TupleDesc.TDItem t = it.next();
+	    String name = tableAlias + "." + t.fieldName;
+	    Type type = t.fieldType;
+	    names[i] = name;
+	    types[i] = type;
+	    i++;
+	}
+	another = new TupleDesc(types, names);
+	return another;
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
         // some code goes here
-        return false;
+        return heapFileIterator.hasNext();
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
         // some code goes here
-        return null;
+        return heapFileIterator.next();
     }
 
     public void close() {
         // some code goes here
+	heapFileIterator.close();
+	heapFileIterator = null;
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
+	heapFileIterator.rewind();
     }
 }

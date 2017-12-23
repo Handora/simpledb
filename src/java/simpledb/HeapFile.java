@@ -18,7 +18,7 @@ public class HeapFile implements DbFile {
     private File file;
     private TupleDesc schema;
 
-    private class HeapIterator extends AbstractDbFileIterator {
+    public class HeapIterator extends AbstractDbFileIterator {
         int pid;
         TransactionId tid;
         LinkedList<Tuple> tuples;
@@ -137,11 +137,14 @@ public class HeapFile implements DbFile {
 	int pgNo = pid.getPageNumber();
 	int offset = pgNo * BufferPool.getPageSize();
 	try {
-	    FileInputStream fis = new FileInputStream(file);
+	    RandomAccessFile raf = new RandomAccessFile(file, "r");
 	    byte[] b = new byte[BufferPool.getPageSize()];
-	    fis.read(b, offset, BufferPool.getPageSize());
-	    return new HeapPage((HeapPageId)pid, b);
+	    int readCnt = Math.min(BufferPool.getPageSize(), (int)file.length()-offset);
+	    raf.seek(offset);
+	    raf.read(b, 0, readCnt);
+	    return new  HeapPage((HeapPageId)pid, b);
 	} catch(Exception e) {
+	    System.out.println("readPage "+e);
 	    return null;
 	}
     }

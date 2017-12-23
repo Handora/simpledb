@@ -94,8 +94,9 @@ public class BufferPool {
 	    if (hf == null)
 		return null;
 	    Page p = hf.readPage(pid);
-	    if (p == null)
+	    if (p == null) {
 		return null;
+	    }
 	    pages[nowCache] = p;
 	    nowCache++;
 	    return p;
