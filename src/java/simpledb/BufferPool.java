@@ -40,9 +40,9 @@ public class BufferPool {
      */
     public BufferPool(int numPages) {
         // some code goes here
-	this.numPages = numPages;
-	pages = new Page[numPages];
-	nowCache = 0;
+      	BufferPool.numPages = numPages;
+      	pages = new Page[numPages];
+      	nowCache = 0;
     }
 
     public static int getPageSize() {
@@ -86,7 +86,7 @@ public class BufferPool {
 		return p;
 	    }
 	}
-	
+
 	if (nowCache >= numPages)
 	    throw new DbException("no left pages in memory");
 	else {
@@ -101,7 +101,7 @@ public class BufferPool {
 	    nowCache++;
 	    return p;
 	}
-	
+
     }
 
     /**

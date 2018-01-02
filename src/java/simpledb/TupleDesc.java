@@ -249,4 +249,16 @@ public class TupleDesc implements Serializable {
         }
         return ret;
     }
+
+    /**
+     * personal addition:
+     */
+    public void setFieldName(int i, String s) {
+      if (i<0 || i >= numFields()) {
+        return;
+      }
+      TDItem t = schema.get(i);
+      TDItem newt = new TDItem(t.fieldType, s);
+      schema.set(i, newt);
+    }
 }
