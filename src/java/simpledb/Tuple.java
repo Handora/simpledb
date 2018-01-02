@@ -56,7 +56,7 @@ public class Tuple implements Serializable {
      */
     public void setRecordId(RecordId rid) {
         // some code goes here
-	recordId = rid;
+        recordId = rid;
     }
 
     /**
@@ -69,7 +69,7 @@ public class Tuple implements Serializable {
      */
     public void setField(int i, Field f) {
         // some code goes here
-	fieldss.set(i, f);
+        fieldss.set(i, f);
     }
 
     /**
@@ -93,12 +93,12 @@ public class Tuple implements Serializable {
      */
     public String toString() {
         // some code goes here
-	String str = "";
-	for (Field f: fieldss) {
-	    str += f + " ";
-	}
+        String str = "";
+        for (Field f: fieldss) {
+            str += f + " ";
+        }
 
-	return str;
+        return str;
     }
 
     /**
@@ -117,9 +117,6 @@ public class Tuple implements Serializable {
     public void resetTupleDesc(TupleDesc td)
     {
         // some code goes here
-	schema = td;
-	for (int i=0; i<td.numFields(); i++) {
-	    fieldss.add(null);
-	}
+        schema = td;
     }
 }

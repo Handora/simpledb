@@ -34,9 +34,11 @@ public class SeqScan implements OpIterator {
      */
     public SeqScan(TransactionId tid, int tableid, String tableAlias) {
         // some code goes here
-	this.transId = tid;
-	this.tableId = tableid;
-	this.tableAlias = tableAlias;
+        this.transId = tid;
+        this.tableId = tableid;
+        this.tableAlias = tableAlias;
+        HeapFile heapFile = (HeapFile)Database.getCatalog().getDatabaseFile(this.tableId);
+        heapFileIterator = (HeapFile.HeapIterator)heapFile.iterator(this.transId);
     }
 
     /**
@@ -71,8 +73,10 @@ public class SeqScan implements OpIterator {
      */
     public void reset(int tableid, String tableAlias) {
         // some code goes here
-	this.tableId = tableid;
-	this.tableAlias = tableAlias;
+        this.tableId = tableid;
+        this.tableAlias = tableAlias;
+        HeapFile heapFile = (HeapFile)Database.getCatalog().getDatabaseFile(this.tableId);
+        heapFileIterator = (HeapFile.HeapIterator)heapFile.iterator(this.transId);
     }
 
     public SeqScan(TransactionId tid, int tableId) {
@@ -81,9 +85,7 @@ public class SeqScan implements OpIterator {
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
-	HeapFile heapFile = (HeapFile)Database.getCatalog().getDatabaseFile(tableId);
-	heapFileIterator = (HeapFile.HeapIterator)heapFile.iterator(transId);
-	heapFileIterator.open();
+        heapFileIterator.open();
     }
 
     /**
@@ -98,24 +100,24 @@ public class SeqScan implements OpIterator {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-	// this is deep copy according to the tupleDesc implementation
-	TupleDesc schema = Database.getCatalog().getTupleDesc(tableId);
-	TupleDesc another = null;
-	String[] names = new String[schema.numFields()];
-	Type[] types = new Type[schema.numFields()];
-	Iterator<TupleDesc.TDItem> it = schema.iterator();;
-	int i=0;
-	
-	while (it.hasNext()) {
-	    TupleDesc.TDItem t = it.next();
-	    String name = tableAlias + "." + t.fieldName;
-	    Type type = t.fieldType;
-	    names[i] = name;
-	    types[i] = type;
-	    i++;
-	}
-	another = new TupleDesc(types, names);
-	return another;
+        // this is deep copy according to the tupleDesc implementation
+        TupleDesc schema = Database.getCatalog().getTupleDesc(tableId);
+        TupleDesc another = null;
+        String[] names = new String[schema.numFields()];
+        Type[] types = new Type[schema.numFields()];
+        Iterator<TupleDesc.TDItem> it = schema.iterator();;
+        int i=0;
+
+        while (it.hasNext()) {
+            TupleDesc.TDItem t = it.next();
+            String name = tableAlias + "." + t.fieldName;
+            Type type = t.fieldType;
+            names[i] = name;
+            types[i] = type;
+            i++;
+        }
+        another = new TupleDesc(types, names);
+        return another;
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
@@ -131,13 +133,13 @@ public class SeqScan implements OpIterator {
 
     public void close() {
         // some code goes here
-	heapFileIterator.close();
-	heapFileIterator = null;
+        heapFileIterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
         // some code goes here
-	heapFileIterator.rewind();
+        close();
+        open();
     }
 }

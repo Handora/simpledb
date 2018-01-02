@@ -24,61 +24,61 @@ public class HeapFile implements DbFile {
         LinkedList<Tuple> tuples;
 
         public HeapIterator(TransactionId t_id) {
-	    tuples = null;
-	    tid = t_id;
+			tuples = null;
+			tid = t_id;
         }
 
         public void open()
             throws DbException, TransactionAbortedException {
-	    tuples = new LinkedList<>();
+            tuples = new LinkedList<>();
             pid = 0;
             HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
-	    if (p == null) {
-		return;
-	    }
-	    Iterator<Tuple> it = p.iterator();
-	    while (it.hasNext()) {
-		tuples.add(it.next());
-	    }
-	    pid++;
+            if (p == null) {
+                return;
+            }
+            Iterator<Tuple> it = p.iterator();
+            while (it.hasNext()) {
+                tuples.add(it.next());
+            }
+            pid++;
         }
 
-	@Override
-	protected Tuple readNext()
-	    throws DbException, TransactionAbortedException {
-	    // prevent iterator not opened
-	    if (tuples == null) {
-		return null;
-	    }
-	    while (tuples.size() == 0) {
-		if (pid >= numPages()) {
-		    return null;
-		} else {
-		    HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
-		    if (p == null) {
-			return null;
-		    }
-		    Iterator<Tuple> it = p.iterator();
-		    while (it.hasNext()) {
-			tuples.add(it.next());
-		    }
-		    pid++;
-		}
-	    }
+        @Override
+        protected Tuple readNext()
+            throws DbException, TransactionAbortedException {
+            // prevent iterator not opened
+            if (tuples == null) {
+                return null;
+            }
+            while (tuples.size() == 0) {
+                if (pid >= numPages()) {
+                    return null;
+                } else {
+                    HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
+                    if (p == null) {
+                        return null;
+                    }
+                    Iterator<Tuple> it = p.iterator();
+                    while (it.hasNext()) {
+                        tuples.add(it.next());
+                    }
+                    pid++;
+                }
+            }
 
-	    return tuples.removeFirst();
-	}
+            return tuples.removeFirst();
+        }
 
-	public void rewind()
-	    throws DbException, TransactionAbortedException {
-	    close();
-	    open();
-	}
+        public void rewind()
+            throws DbException, TransactionAbortedException {
+            close();
+            open();
+        }
 
-	public void close() {
-	    super.close();
-	    tuples = null;
-	}
+        public void close() {
+            super.close();
+            tuples = null;
+        }
     }
 
     /**
@@ -161,7 +161,7 @@ public class HeapFile implements DbFile {
     public int numPages() {
         // some code goes here
         return (int)file.length() / BufferPool.getPageSize()
-	    + ((int)file.length() % BufferPool.getPageSize() == 0 ? 0:1);
+                + ((int)file.length() % BufferPool.getPageSize() == 0 ? 0:1);
     }
 
     // see DbFile.java for javadocs
