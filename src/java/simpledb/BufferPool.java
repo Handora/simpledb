@@ -1,7 +1,7 @@
 package simpledb;
 
 import java.io.*;
-
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -77,30 +77,30 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-	if (pid == null)
-	    throw new DbException("null pageId");
+      	if (pid == null)
+      	    throw new DbException("null pageId");
 
-	for (int i=0; i<nowCache; i++) {
-	    Page p = pages[i];
-	    if (pid.equals(p.getId())) {
-		return p;
-	    }
-	}
+      	for (int i=0; i<nowCache; i++) {
+      	    Page p = pages[i];
+      	    if (pid.equals(p.getId())) {
+      		      return p;
+      	    }
+      	}
 
-	if (nowCache >= numPages)
-	    throw new DbException("no left pages in memory");
-	else {
-	    HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
-	    if (hf == null)
-		return null;
-	    Page p = hf.readPage(pid);
-	    if (p == null) {
-		return null;
-	    }
-	    pages[nowCache] = p;
-	    nowCache++;
-	    return p;
-	}
+      	if (nowCache >= numPages)
+      	    throw new DbException("no left pages in memory");
+      	else {
+      	    HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+      	    if (hf == null)
+      		      return null;
+      	    Page p = hf.readPage(pid);
+      	    if (p == null) {
+      		      return null;
+      	    }
+      	    pages[nowCache] = p;
+      	    nowCache++;
+      	    return p;
+      	}
 
     }
 
@@ -167,6 +167,23 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(tableId);
+        ArrayList<Page> ar = hf.insertTuple(tid, t);
+        for (Page p: ar) {
+            p.markDirty(true, tid);
+            int i;
+            for (i=0; i<nowCache; i++) {
+                Page page = pages[i];
+          	    if (page.getId().equals(p.getId())) {
+          		      pages[i] = p;
+                    break;
+          	    }
+            }
+            if (i == nowCache) {
+                pages[i] = p;
+                nowCache++;
+            }
+        }
     }
 
     /**
@@ -186,6 +203,23 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
+        HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        ArrayList<Page> ar = hf.deleteTuple(tid, t);
+        for (Page p: ar) {
+            p.markDirty(true, tid);
+            int i;
+            for (i=0; i<nowCache; i++) {
+                Page page = pages[i];
+          	    if (page.getId().equals(p.getId())) {
+          		      pages[i] = p;
+                    break;
+          	    }
+            }
+            if (i == nowCache) {
+                pages[i] = p;
+                nowCache++;
+            }
+        }
     }
 
     /**

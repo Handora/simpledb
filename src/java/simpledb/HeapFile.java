@@ -24,8 +24,8 @@ public class HeapFile implements DbFile {
         LinkedList<Tuple> tuples;
 
         public HeapIterator(TransactionId t_id) {
-			tuples = null;
-			tid = t_id;
+      			tuples = null;
+      			tid = t_id;
         }
 
         public void open()
@@ -78,6 +78,7 @@ public class HeapFile implements DbFile {
         public void close() {
             super.close();
             tuples = null;
+            pid = 0;
         }
     }
 
@@ -115,7 +116,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-    	return file.getAbsoluteFile().hashCode();
+    	  return file.getAbsoluteFile().hashCode();
     }
 
     /**
@@ -125,28 +126,28 @@ public class HeapFile implements DbFile {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-    	return schema;
+    	  return schema;
     }
 
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
         // some code goes here
-	if (pid.getTableId() != getId() || pid.getPageNumber() >= numPages())
-	    return null;
+      	if (pid.getTableId() != getId() || pid.getPageNumber() >= numPages())
+      	    return null;
 
-	int pgNo = pid.getPageNumber();
-	int offset = pgNo * BufferPool.getPageSize();
-	try {
-	    RandomAccessFile raf = new RandomAccessFile(file, "r");
-	    byte[] b = new byte[BufferPool.getPageSize()];
-	    int readCnt = Math.min(BufferPool.getPageSize(), (int)file.length()-offset);
-	    raf.seek(offset);
-	    raf.read(b, 0, readCnt);
-	    return new  HeapPage((HeapPageId)pid, b);
-	} catch(Exception e) {
-	    System.out.println("readPage "+e);
-	    return null;
-	}
+      	int pgNo = pid.getPageNumber();
+      	int offset = pgNo * BufferPool.getPageSize();
+      	try {
+      	    RandomAccessFile raf = new RandomAccessFile(file, "r");
+      	    byte[] b = new byte[BufferPool.getPageSize()];
+      	    int readCnt = Math.min(BufferPool.getPageSize(), (int)file.length()-offset);
+      	    raf.seek(offset);
+      	    raf.read(b, 0, readCnt);
+      	    return new  HeapPage((HeapPageId)pid, b);
+      	} catch(Exception e) {
+      	    System.out.println("readPage "+e);
+      	    return null;
+      	}
     }
 
     // see DbFile.java for javadocs
@@ -168,16 +169,47 @@ public class HeapFile implements DbFile {
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        return null;
         // not necessary for lab1
+        int len = numPages();
+        int i;
+        for (i=0; i<len; i++) {
+            HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), null);
+            if (p == null) {
+                throw new DbException("Internal error");
+            }
+
+            if (p.getNumEmptySlots() > 0) {
+                p.insertTuple(t);
+
+                ArrayList<Page> a = new ArrayList<>();
+                a.add(p);
+                return a;
+            }
+        }
+
+        HeapPage p = new HeapPage(new HeapPageId(getId(), i), HeapPage.createEmptyPageData());
+        ArrayList<Page> a = new ArrayList<>();
+        p.insertTuple(t);
+        OutputStream opStream = new FileOutputStream(file, true);
+        opStream.write(p.getPageData());
+        opStream.flush();
+        opStream.close();
+        a.add(p);
+        return a;
     }
 
     // see DbFile.java for javadocs
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
         // some code goes here
-        return null;
         // not necessary for lab1
+        HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), null);
+        if (p == null)
+          return null;
+        p.deleteTuple(t);
+        ArrayList<Page> a = new ArrayList<>();
+        a.add(p);
+        return a;
     }
 
     // see DbFile.java for javadocs
@@ -187,4 +219,3 @@ public class HeapFile implements DbFile {
     }
 
 }
-
