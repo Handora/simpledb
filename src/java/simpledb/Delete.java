@@ -71,6 +71,7 @@ public class Delete extends Operator {
         if (!this.first) {
             return null;
         }
+        
         this.first = false;
         int sum = 0;
         while (child.hasNext()) {
