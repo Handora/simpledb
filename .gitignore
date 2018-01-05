@@ -5,3 +5,5 @@ dist/
 log
 #*#
 .idea
+*.txt
+*.dat
