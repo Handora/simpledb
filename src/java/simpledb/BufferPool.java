@@ -30,8 +30,127 @@ public class BufferPool {
     private static int numPages;
 
     /** Page storage */
-    private static Page[] pages;
-    private static int nowCache;
+    private class PageBuffer {
+        private Page p;
+        private PageBuffer next;
+        private PageBuffer prev;
+        private boolean isSen;
+
+        public PageBuffer(Page p, PageBuffer next, PageBuffer prev, boolean isSen) {
+            this.p = p;
+            this.next = next;
+            this.prev = prev;
+            this.isSen = isSen;
+        }
+
+        public PageBuffer(Page p, PageBuffer next, PageBuffer prev) {
+            this.p = p;
+            this.next = next;
+            this.prev = prev;
+            this.isSen = false;
+        }
+
+        public boolean isSential() {
+            return this.isSen;
+        }
+
+        public PageBuffer(Page p) {
+            this(p, null, null);
+        }
+
+        public PageBuffer(PageBuffer next, PageBuffer prev) {
+            this(null, next, prev);
+        }
+
+        public PageBuffer() {
+            this(null, null, null);
+        }
+
+        public Page getPage() {
+            return this.p;
+        }
+
+        public void setPage(Page p) {
+            this.p = p;
+        }
+
+        public PageBuffer getNext() {
+            return this.next;
+        }
+
+        public void setNext(PageBuffer n) {
+            this.next = n;
+        }
+
+        public void setPrev(PageBuffer p) {
+            this.prev = p;
+        }
+
+        public PageBuffer getPrev() {
+            return this.prev;
+        }
+    }
+
+    private class BufferChain {
+        private PageBuffer head;
+
+        public BufferChain() {
+            head = new PageBuffer(null, null, null, true);
+            head.setNext(head);
+            head.setPrev(head);
+        }
+
+        public void insertFirst(PageBuffer pb) {
+            this.head.getNext().setPrev(pb);
+            pb.setNext(this.head.getNext());
+            pb.setPrev(this.head);
+            this.head.setNext(pb);
+        }
+
+        public void delete(PageBuffer pb) throws DbException {
+            if (this.head.getPrev() == this.head) {
+                throw new DbException("delete page from empty bufferpool");
+            }
+
+            pb.getPrev().setNext(pb.getNext());
+            pb.getNext().setPrev(pb.getPrev());
+        }
+
+        public PageBuffer find(PageId pid) {
+            for (PageBuffer it = this.head.next; it != this.head; it=it.getNext()) {
+                Page p = it.getPage();
+                if (pid.equals(p.getId())) {
+                    return it;
+                }
+            }
+            return null;
+        }
+
+        public PageBuffer deleteLast() throws DbException {
+            if (this.head.getPrev() == this.head) {
+                throw new DbException("delete page from empty bufferpool");
+            }
+
+            PageBuffer tmp = this.head.getPrev();
+            this.head.setPrev(tmp.getPrev());
+            tmp.getPrev().setNext(this.head);
+            return tmp;
+        }
+
+        public boolean isEmpty() {
+            return this.head.getNext() == this.head;
+        }
+
+        public ArrayList<Page> getBufferPages() {
+            ArrayList<Page> a = new ArrayList<>();
+            for (PageBuffer it = this.head.getNext(); it != this.head; it = it.getNext()) {
+                a.add(it.getPage());
+            }
+            return a;
+        }
+    }
+
+    private BufferChain buffer, empty;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -41,22 +160,26 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // some code goes here
       	BufferPool.numPages = numPages;
-      	pages = new Page[numPages];
-      	nowCache = 0;
+        buffer = new BufferChain();
+        empty = new BufferChain();
+        for (int i=0; i<numPages; i++) {
+            PageBuffer pb = new PageBuffer();
+            empty.insertFirst(pb);
+        }
     }
 
     public static int getPageSize() {
-      return pageSize;
+        return pageSize;
     }
 
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void setPageSize(int pageSize) {
-    	BufferPool.pageSize = pageSize;
+        BufferPool.pageSize = pageSize;
     }
 
     // THIS FUNCTION SHOULD ONLY BE USED FOR TESTING!!
     public static void resetPageSize() {
-    	BufferPool.pageSize = DEFAULT_PAGE_SIZE;
+    	  BufferPool.pageSize = DEFAULT_PAGE_SIZE;
     }
 
     /**
@@ -80,28 +203,33 @@ public class BufferPool {
       	if (pid == null)
       	    throw new DbException("null pageId");
 
-      	for (int i=0; i<nowCache; i++) {
-      	    Page p = pages[i];
-      	    if (pid.equals(p.getId())) {
-      		      return p;
-      	    }
-      	}
-
-      	if (nowCache >= numPages)
-      	    throw new DbException("no left pages in memory");
-      	else {
-      	    HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
-      	    if (hf == null)
-      		      return null;
-      	    Page p = hf.readPage(pid);
-      	    if (p == null) {
-      		      return null;
-      	    }
-      	    pages[nowCache] = p;
-      	    nowCache++;
-      	    return p;
-      	}
-
+        PageBuffer pb = this.buffer.find(pid);
+        if (pb != null) {
+            buffer.delete(pb);
+            buffer.insertFirst(pb);
+            return pb.getPage();
+        } else {
+            if (empty.isEmpty()) {
+                pb = buffer.deleteLast();
+                if (pb.getPage().isDirty() != null) {
+                    HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
+                    try {
+                        h.writePage(pb.getPage());
+                    } catch (IOException e) {
+                        // TODO
+                        // handle cleanly
+                        System.out.println("write page error");
+                    }
+                    pb.getPage().markDirty(false, null);
+                }
+            } else {
+                pb = empty.deleteLast();
+            }
+            HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+            pb.setPage(hf.readPage(pid));
+            buffer.insertFirst(pb);
+            return pb.getPage();
+        }
     }
 
     /**
@@ -171,17 +299,25 @@ public class BufferPool {
         ArrayList<Page> ar = hf.insertTuple(tid, t);
         for (Page p: ar) {
             p.markDirty(true, tid);
-            int i;
-            for (i=0; i<nowCache; i++) {
-                Page page = pages[i];
-          	    if (page.getId().equals(p.getId())) {
-          		      pages[i] = p;
-                    break;
-          	    }
-            }
-            if (i == nowCache) {
-                pages[i] = p;
-                nowCache++;
+            PageBuffer pb = buffer.find(p.getId());
+
+            if (pb != null) {
+                pb.setPage(p);
+                buffer.delete(pb);
+                buffer.insertFirst(pb);
+            } else {
+                if (empty.isEmpty()) {
+                    pb = buffer.deleteLast();
+                    if (pb.getPage().isDirty() != null) {
+                        HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
+                        h.writePage(pb.getPage());
+                        pb.getPage().markDirty(false, null);
+                    }
+                } else {
+                    pb = empty.deleteLast();
+                }
+                pb.setPage(p);
+                buffer.insertFirst(pb);
             }
         }
     }
@@ -207,17 +343,25 @@ public class BufferPool {
         ArrayList<Page> ar = hf.deleteTuple(tid, t);
         for (Page p: ar) {
             p.markDirty(true, tid);
-            int i;
-            for (i=0; i<nowCache; i++) {
-                Page page = pages[i];
-          	    if (page.getId().equals(p.getId())) {
-          		      pages[i] = p;
-                    break;
-          	    }
-            }
-            if (i == nowCache) {
-                pages[i] = p;
-                nowCache++;
+            PageBuffer pb = buffer.find(p.getId());
+
+            if (pb != null) {
+                pb.setPage(p);
+                buffer.delete(pb);
+                buffer.insertFirst(pb);
+            } else {
+                if (empty.isEmpty()) {
+                    pb = buffer.deleteLast();
+                    if (pb.getPage().isDirty() != null) {
+                        HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
+                        h.writePage(pb.getPage());
+                        pb.getPage().markDirty(false, null);
+                    }
+                } else {
+                    pb = empty.deleteLast();
+                }
+                pb.setPage(p);
+                buffer.insertFirst(pb);
             }
         }
     }
@@ -230,7 +374,14 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-
+        ArrayList<Page> a = buffer.getBufferPages();
+        for (Page v: a) {
+            if (v.isDirty() != null) {
+                HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(v.getId().getTableId());
+                h.writePage(v);
+                v.markDirty(false, null);
+            }
+        }
     }
 
     /** Remove the specific page id from the buffer pool.
@@ -244,6 +395,19 @@ public class BufferPool {
     public synchronized void discardPage(PageId pid) {
         // some code goes here
         // not necessary for lab1
+        PageBuffer pb = buffer.find(pid);
+        if (pb == null) {
+            return ;
+        } else {
+            try {
+                buffer.delete(pb);
+            } catch(DbException e) {
+                // TODO:
+                //    nicer work
+                System.out.println("error in discardPage");
+            }
+            empty.insertFirst(pb);
+        }
     }
 
     /**
@@ -253,6 +417,16 @@ public class BufferPool {
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
+        PageBuffer pb = buffer.find(pid);
+        if (pb == null) {
+            return ;
+        } else {
+            if (pb.getPage().isDirty() != null) {
+                HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+                h.writePage(pb.getPage());
+                pb.getPage().markDirty(false, null);
+            }
+        }
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -269,6 +443,19 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
+        PageBuffer pb = buffer.deleteLast();
+        if (pb.getPage().isDirty() != null) {
+            HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
+            try {
+                h.writePage(pb.getPage());
+            } catch(IOException e) {
+                // TODO:
+                //    nicer work
+                System.out.println("writePage error");
+            }
+            pb.getPage().markDirty(false, null);
+        }
+        empty.insertFirst(pb);
     }
 
 }

@@ -140,10 +140,11 @@ public class HeapFile implements DbFile {
       	try {
       	    RandomAccessFile raf = new RandomAccessFile(file, "r");
       	    byte[] b = new byte[BufferPool.getPageSize()];
-      	    int readCnt = Math.min(BufferPool.getPageSize(), (int)file.length()-offset);
+      	    int readCnt = BufferPool.getPageSize();
       	    raf.seek(offset);
       	    raf.read(b, 0, readCnt);
-      	    return new  HeapPage((HeapPageId)pid, b);
+            raf.close();
+      	    return new HeapPage((HeapPageId)pid, b);
       	} catch(Exception e) {
       	    System.out.println("readPage "+e);
       	    return null;
@@ -154,6 +155,12 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         // not necessary for lab1
+        int pageNo = page.getId().getPageNumber();
+        int offset = pageNo * BufferPool.getPageSize();
+        RandomAccessFile raf = new RandomAccessFile(file, "rw");
+        raf.seek(offset);
+        raf.write(page.getPageData());
+        raf.close();
     }
 
     /**
