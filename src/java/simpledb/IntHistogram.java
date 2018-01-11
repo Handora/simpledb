@@ -110,10 +110,10 @@ public class IntHistogram {
             return sum;
         } else if (op.equals(Predicate.Op.NOT_EQUALS)) {
             if (v < min) {
-                return 0.0;
+                return 1.0;
             }
             if (v > max) {
-                return 0.0;
+                return 1.0;
             }
             return 1.0 - (double)this.numPerBuckets*this.buckets[index]/this.ntups;
         } else {

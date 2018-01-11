@@ -7,8 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * TableStats represents statistics (e.g., histograms) about base tables in a
- * query. 
- * 
+ * query.
+ *
  * This class is not needed in implementing lab1 and lab2.
  */
 public class TableStats {
@@ -24,7 +24,7 @@ public class TableStats {
     public static void setTableStats(String tablename, TableStats stats) {
         statsMap.put(tablename, stats);
     }
-    
+
     public static void setStatsMap(HashMap<String,TableStats> s)
     {
         try {
@@ -65,11 +65,21 @@ public class TableStats {
      * histograms.
      */
     static final int NUM_HIST_BINS = 100;
+    private int tableId;
+    private int ioCostPerPage;
+    private DbFile file;
+    private int[] max;
+    private int[] min;
+    private int nTuples;
+    private TupleDesc tupleDesc;
+    private int numFields;
+    private boolean[] isInteger;
+    private Map<Integer, Object> histograms;
 
     /**
      * Create a new TableStats object, that keeps track of statistics on each
      * column of a table
-     * 
+     *
      * @param tableid
      *            The table over which to compute statistics
      * @param ioCostPerPage
@@ -85,29 +95,77 @@ public class TableStats {
         // necessarily have to (for example) do everything
         // in a single scan of the table.
         // some code goes here
+        this.tableId = tableid;
+        this.ioCostPerPage = ioCostPerPage;
+        this.file = Database.getCatalog().getDatabaseFile(tableid);
+        this.tupleDesc = this.file.getTupleDesc();
+        this.numFields = tupleDesc.numFields();
+        this.max = new int[numFields];
+        this.min = new int[numFields];
+        this.isInteger = new boolean[numFields];
+        this.histograms = new HashMap<>();
+
+        // TODO
+        // How to deal with transaction id
+        this.nTuples = 0;
+        DbFileIterator it = this.file.iterator(null);
+        try {
+            it.open();
+            while (it.hasNext()) {
+                Tuple t = it.next();
+                Iterator<Field> it2 = t.fields();
+                int i = 0;
+                while (it2.hasNext()) {
+                    Field f = it2.next();
+                    if (!f.getType().equals(Type.INT_TYPE)) {
+                        this.isInteger[i] = false;
+                        i++;
+                        continue;
+                    }
+                    this.isInteger[i] = true;
+                    if (this.nTuples == 0) {
+                        this.max[i] = this.min[i] = ((IntField)f).getValue();
+                    } else {
+                        int v = ((IntField)f).getValue();
+                        if (v > max[i]) {
+                            max[i] = v;
+                        }
+                        if (v < min[i]) {
+                            min[i] = v;
+                        }
+                    }
+                    i++;
+                }
+                this.nTuples++;
+            }
+            it.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /**
      * Estimates the cost of sequentially scanning the file, given that the cost
      * to read a page is costPerPageIO. You can assume that there are no seeks
      * and that no pages are in the buffer pool.
-     * 
+     *
      * Also, assume that your hard drive can only read entire pages at once, so
      * if the last page of the table only has one tuple on it, it's just as
      * expensive to read as a full page. (Most real hard drives can't
      * efficiently address regions smaller than a page at a time.)
-     * 
+     *
      * @return The estimated cost of scanning the table.
      */
     public double estimateScanCost() {
         // some code goes here
-        return 0;
+        HeapFile hp = (HeapFile)this.file;
+        return hp.numPages() * this.ioCostPerPage;
     }
 
     /**
      * This method returns the number of tuples in the relation, given that a
      * predicate with selectivity selectivityFactor is applied.
-     * 
+     *
      * @param selectivityFactor
      *            The selectivity of any predicates over the table
      * @return The estimated cardinality of the scan with the specified
@@ -115,7 +173,7 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
-        return 0;
+        return (int)((double)this.nTuples * selectivityFactor);
     }
 
     /**
@@ -136,7 +194,7 @@ public class TableStats {
     /**
      * Estimate the selectivity of predicate <tt>field op constant</tt> on the
      * table.
-     * 
+     *
      * @param field
      *            The field over which the predicate ranges
      * @param op
@@ -148,7 +206,53 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
-        return 1.0;
+        if (this.isInteger[field]) {
+            IntHistogram histogram;
+            if (histograms.containsKey(field)) {
+                histogram = (IntHistogram)histograms.get(field);
+            } else {
+                histogram = new IntHistogram(NUM_HIST_BINS, this.min[field], this.max[field]);
+                DbFileIterator it = this.file.iterator(null);
+                try {
+                    it.open();
+                    while (it.hasNext()) {
+                        Tuple t = it.next();
+
+                        IntField f = (IntField)t.getField(field);
+                        histogram.addValue(f.getValue());
+                    }
+                    it.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                histograms.put(field, histogram);
+            }
+
+            return histogram.estimateSelectivity(op, ((IntField)constant).getValue());
+        } else {
+            StringHistogram histogram;
+            if (histograms.containsKey(field)) {
+                histogram = (StringHistogram)histograms.get(field);
+            } else {
+                histogram = new StringHistogram(NUM_HIST_BINS);
+                DbFileIterator it = this.file.iterator(null);
+                try {
+                    it.open();
+                    while (it.hasNext()) {
+                        Tuple t = it.next();
+
+                        StringField f = (StringField)t.getField(field);
+                        histogram.addValue(f.getValue());
+                    }
+                    it.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                histograms.put(field, histogram);
+            }
+
+            return histogram.estimateSelectivity(op, ((StringField)constant).getValue());
+        }
     }
 
     /**
@@ -156,7 +260,7 @@ public class TableStats {
      * */
     public int totalTuples() {
         // some code goes here
-        return 0;
+        return this.nTuples;
     }
 
 }
