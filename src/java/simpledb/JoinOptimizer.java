@@ -155,16 +155,21 @@ public class JoinOptimizer {
             String field2PureName, int card1, int card2, boolean t1pkey,
             boolean t2pkey, Map<String, TableStats> stats,
             Map<String, Integer> tableAliasToId) {
-        int card = 1;
         // some code goes here
 
-        if (joinOp == Predicate.Op.EQUALS) {
-
+        if (joinOp == Predicate.Op.EQUALS || joinOp == Predicate.Op.NOT_EQUALS) {
+            if (t1pkey) {
+                return card2;
+            } else if (t2pkey) {
+                return card1;
+            } else {
+                return card1 > card2 ? card1 : card2;
+            }
+        } else {
+            int card = (int)(0.3 * (double)(card1 * card2));
+            return card;
         }
 
-
-
-        return card <= 0 ? 1 : card;
     }
 
     /**
