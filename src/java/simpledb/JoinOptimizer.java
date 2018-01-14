@@ -1,7 +1,7 @@
 package simpledb;
 
 import java.util.*;
-
+import java.util.HashSet;
 import javax.swing.*;
 import javax.swing.tree.*;
 
@@ -202,7 +202,6 @@ public class JoinOptimizer {
         }
 
         return els;
-
     }
 
     /**
@@ -231,9 +230,32 @@ public class JoinOptimizer {
             throws ParsingException {
         //Not necessary for labs 1--3
 
+        PlanCache pc = new PlanCache();
         // some code goes here
         //Replace the following
-        return joins;
+
+        for (int i=1; i<=joins.size(); i++) {
+            Set<Set<LogicalJoinNode>> els = enumerateSubsets(joins, i);
+            for (Set<LogicalJoinNode> sets: els) {
+                CostCard bestPlan = new CostCard();
+                bestPlan.cost = Double.MAX_VALUE;
+                for (LogicalJoinNode s: sets) {
+                    CostCard cc = computeCostAndCardOfSubplan(stats, filterSelectivities, s, sets, bestPlan.cost, pc);
+                    if (cc != null) {
+                        bestPlan = cc;
+                    }
+                }
+
+                pc.addPlan(sets, bestPlan.cost, bestPlan.card, bestPlan.plan);
+                if (i == joins.size()) {
+                    if (explain) {
+                        printJoins(pc.getOrder(sets), pc, stats, filterSelectivities);
+                    }
+                    return pc.getOrder(sets);
+                }
+            }
+        }
+        return null;
     }
 
     // ===================== Private Methods =================================
@@ -242,7 +264,7 @@ public class JoinOptimizer {
      * This is a helper method that computes the cost and cardinality of joining
      * joinToRemove to joinSet (joinSet should contain joinToRemove), given that
      * all of the subsets of size joinSet.size() - 1 have already been computed
-     * and stored in PlanCache pc.
+     * and stored in PlanCache pc.ckpj
      *
      * @param stats
      *            table stats for all of the tables, referenced by table names
