@@ -111,6 +111,9 @@ public class JoinOptimizer {
             // a join algorithm that's more complicated than a basic
             // nested-loops join.
 
+            // Just use the basic nested-loops joins
+            // joincost(t1 join t2) = scancost(t1) + ntups(t1) x scancost(t2) //IO cost
+            //                       + ntups(t1) x ntups(t2)  //CPU cost
             return cost1 + cost2 * card1 + card1 * card2;
         }
     }
@@ -157,6 +160,7 @@ public class JoinOptimizer {
             Map<String, Integer> tableAliasToId) {
         // some code goes here
 
+        // Use simple heuristic
         if (joinOp == Predicate.Op.EQUALS || joinOp == Predicate.Op.NOT_EQUALS) {
             if (t1pkey) {
                 return card2;
@@ -169,7 +173,6 @@ public class JoinOptimizer {
             int card = (int)(0.3 * (double)(card1 * card2));
             return card;
         }
-
     }
 
     /**

@@ -418,7 +418,7 @@ public class LogicalPlan {
                 TupleDesc td = node.getTupleDesc();
 //                int  id;
                 try {
-//                    id = 
+//                    id =
                     td.fieldNameToIndex(si.fname);
                 } catch (NoSuchElementException e) {
                     throw new ParsingException("Unknown field " +  si.fname + " in SELECT list");
