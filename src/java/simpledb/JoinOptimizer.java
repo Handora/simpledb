@@ -1,6 +1,8 @@
 package simpledb;
 
 import java.util.*;
+import java.util.*;
+import java.util.BitSet;
 import java.util.HashSet;
 import javax.swing.*;
 import javax.swing.tree.*;
@@ -185,20 +187,21 @@ public class JoinOptimizer {
      *            The size of the subsets of interest
      * @return a set of all subsets of the specified size
      */
-    @SuppressWarnings("unchecked")
-    public <T> Set<Set<T>> enumerateSubsets(Vector<T> v, int size) {
-        Set<Set<T>> els = new HashSet<Set<T>>();
-        els.add(new HashSet<T>());
+    public Set<BitSet> enumerateSubsets(int v, int size) {
+        Set<BitSet> els = new HashSet<BitSet>();
+        els.add(new BitSet(v));
         // Iterator<Set> it;
         // long start = System.currentTimeMillis();
 
         for (int i = 0; i < size; i++) {
-            Set<Set<T>> newels = new HashSet<Set<T>>();
-            for (Set<T> s : els) {
-                for (T t : v) {
-                    Set<T> news = (Set<T>) (((HashSet<T>) s).clone());
-                    if (news.add(t))
+            Set<BitSet> newels = new HashSet<BitSet>();
+            for (BitSet s : els) {
+                for (int t=0; t<v; t++) {
+                    BitSet news = (BitSet)s.clone();
+                    if (!news.get(t)) {
+                        news.set(t);
                         newels.add(news);
+                    }
                 }
             }
             els = newels;
@@ -237,12 +240,15 @@ public class JoinOptimizer {
         // some code goes here
         //Replace the following
         for (int i=1; i<=joins.size(); i++) {
-            Set<Set<LogicalJoinNode>> els = enumerateSubsets(joins, i);
-            for (Set<LogicalJoinNode> sets: els) {
+            Set<BitSet> els = enumerateSubsets(joins.size(), i);
+            for (BitSet sets: els) {
                 CostCard bestPlan = new CostCard();
                 bestPlan.cost = Double.MAX_VALUE;
-                for (LogicalJoinNode s: sets) {
-                    CostCard cc = computeCostAndCardOfSubplan(stats, filterSelectivities, s, sets, bestPlan.cost, pc);
+                for (int j=0; j<joins.size(); j++) {
+                    if (!sets.get(j)) {
+                        continue;
+                    }
+                    CostCard cc = computeCostAndCardOfSubplan(stats, filterSelectivities, j, sets, bestPlan.cost, pc);
                     if (cc != null) {
                         bestPlan = cc;
                     }
@@ -296,10 +302,10 @@ public class JoinOptimizer {
     private CostCard computeCostAndCardOfSubplan(
             HashMap<String, TableStats> stats,
             HashMap<String, Double> filterSelectivities,
-            LogicalJoinNode joinToRemove, Set<LogicalJoinNode> joinSet,
+            int joinToRemoveId, BitSet joinSet,
             double bestCostSoFar, PlanCache pc) throws ParsingException {
 
-        LogicalJoinNode j = joinToRemove;
+        LogicalJoinNode j = joins.get(joinToRemoveId);
 
         Vector<LogicalJoinNode> prevBest;
 
@@ -315,9 +321,8 @@ public class JoinOptimizer {
         String table1Alias = j.t1Alias;
         String table2Alias = j.t2Alias;
 
-        Set<LogicalJoinNode> news = (Set<LogicalJoinNode>) ((HashSet<LogicalJoinNode>) joinSet)
-                .clone();
-        news.remove(j);
+        BitSet news = (BitSet)joinSet.clone();
+        news.clear(joinToRemoveId);
 
         double t1cost, t2cost;
         int t1card, t2card;
@@ -490,12 +495,12 @@ public class JoinOptimizer {
 
         // int k;
         DefaultMutableTreeNode root = null, treetop = null;
-        HashSet<LogicalJoinNode> pathSoFar = new HashSet<LogicalJoinNode>();
+        BitSet pathSoFar = new BitSet(joins.size());
         boolean neither;
 
         System.out.println(js);
         for (LogicalJoinNode j : js) {
-            pathSoFar.add(j);
+            pathSoFar.set(joins.indexOf(j));
             System.out.println("PATH SO FAR = " + pathSoFar);
 
             String table1Name = Database.getCatalog().getTableName(
