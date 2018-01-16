@@ -180,8 +180,8 @@ public class Aggregate extends Operator {
     @Override
     public OpIterator[] getChildren() {
       	// some code goes here
-        OpIterator[] ops = new Operator[1];
-        ops[0] = child;
+        OpIterator[] ops = new OpIterator[1];
+        ops[0] = this.child;
       	return ops;
     }
 
