@@ -18,7 +18,7 @@ public class OrderBy extends Operator {
 
     /**
      * Creates a new OrderBy node over the tuples from the iterator.
-     * 
+     *
      * @param orderbyField
      *            the field to which the sort is applied.
      * @param asc
@@ -33,22 +33,22 @@ public class OrderBy extends Operator {
         this.orderByFieldName = td.getFieldName(orderbyField);
         this.asc = asc;
     }
-    
+
     public boolean isASC()
     {
 	return this.asc;
     }
-    
+
     public int getOrderByField()
     {
         return this.orderByField;
     }
-    
+
     public String getOrderFieldName()
     {
 	return this.orderByFieldName;
     }
-    
+
     public TupleDesc getTupleDesc() {
         return td;
     }
@@ -58,7 +58,7 @@ public class OrderBy extends Operator {
         child.open();
         // load all the tuples in a collection, and sort it
         while (child.hasNext())
-            childTups.add((Tuple) child.next());
+            childTups.add(child.next());
         Collections.sort(childTups, new TupleComparator(orderByField, asc));
         it = childTups.iterator();
         super.open();
@@ -76,7 +76,7 @@ public class OrderBy extends Operator {
     /**
      * Operator.fetchNext implementation. Returns tuples from the child operator
      * in order
-     * 
+     *
      * @return The next tuple in the ordering, or null if there are no more
      *         tuples
      */
@@ -119,5 +119,5 @@ class TupleComparator implements Comparator<Tuple> {
         else
             return asc ? -1 : 1;
     }
-    
+
 }

@@ -138,6 +138,7 @@ public class Parser {
         Vector<ZFromItem> from = q.getFrom();
         LogicalPlan lp = new LogicalPlan();
         lp.setQuery(q.toString());
+
         // walk through tables in the FROM clause
         for (int i = 0; i < from.size(); i++) {
             ZFromItem fromIt = from.elementAt(i);
@@ -267,6 +268,7 @@ public class Parser {
             lp.addOrderBy(f.getValue(), oby.getAscOrder());
 
         }
+
         return lp;
     }
 
@@ -277,7 +279,6 @@ public class Parser {
             throws TransactionAbortedException, DbException, IOException,
             simpledb.ParsingException, Zql.ParseException {
         Query query = new Query(tId);
-
         LogicalPlan lp = parseQueryLogicalPlan(tId, s);
         OpIterator physicalPlan = lp.physicalPlan(tId,
                 TableStats.getStatsMap(), explain);
@@ -532,9 +533,9 @@ public class Parser {
                                         + s
                                         + "\n -- parser only handles SQL transactions, insert, delete, and select statements");
                     }
+
                     if (query != null)
                         query.execute();
-
                     if (!inUserTrans && curtrans != null) {
                         curtrans.commit();
                         System.out.println("Transaction "

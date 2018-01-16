@@ -236,7 +236,6 @@ public class JoinOptimizer {
         PlanCache pc = new PlanCache();
         // some code goes here
         //Replace the following
-
         for (int i=1; i<=joins.size(); i++) {
             Set<Set<LogicalJoinNode>> els = enumerateSubsets(joins, i);
             for (Set<LogicalJoinNode> sets: els) {
@@ -258,7 +257,7 @@ public class JoinOptimizer {
                 }
             }
         }
-        return null;
+        return new Vector<LogicalJoinNode>();
     }
 
     // ===================== Private Methods =================================

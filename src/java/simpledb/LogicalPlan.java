@@ -59,7 +59,7 @@ public class LogicalPlan {
     public void setQuery(String query)  {
         this.query = query;
     }
-      
+
     /** Get the query text associated with this plan via {@link #setQuery}.
      */
     public String getQuery() {
@@ -75,7 +75,7 @@ public class LogicalPlan {
     public Integer getTableId(String alias) {
         return tableMap.get(alias);
     }
-    
+
     public HashMap<String,Integer> getTableAliasToIdMapping()
     {
         return this.tableMap;
@@ -96,16 +96,16 @@ public class LogicalPlan {
      *   tables contain a field named field.)
      */
     public void addFilter(String field, Predicate.Op p, String
-        constantValue) throws ParsingException{ 
+        constantValue) throws ParsingException{
 
-        field = disambiguateName(field); 
+        field = disambiguateName(field);
         String table = field.split("[.]")[0];
-        
+
         LogicalFilterNode lf = new LogicalFilterNode(table, field.split("[.]")[1], p, constantValue);
         filters.addElement(lf);
     }
 
-    /** Add a join between two fields of two different tables.  
+    /** Add a join between two fields of two different tables.
      *  @param joinField1 The name of the first join field; this can
      *  be a fully qualified name (e.g., tableName.field or
      *  alias.field) or may be an unqualified unique field name.  If
@@ -172,7 +172,7 @@ public class LogicalPlan {
         Fields are output by the query such that the rightmost field is the first added via addProjectField.
         @param fname the field to add to the output
         @param aggOp the aggregate operation over the field.
-     * @throws ParsingException 
+     * @throws ParsingException
     */
     public void addProjectField(String fname, String aggOp) throws ParsingException {
         fname=disambiguateName(fname);
@@ -184,14 +184,14 @@ public class LogicalPlan {
         }
         selectList.addElement(new LogicalSelectListNode(aggOp, fname));
     }
-    
+
     /** Add an aggregate over the field with the specified grouping to
         the query.  SimpleDb only supports a single aggregate
         expression and GROUP BY field.
         @param op the aggregation operator
         @param afield the field to aggregate over
         @param gfield the field to group by
-     * @throws ParsingException 
+     * @throws ParsingException
     */
     public void addAggregate(String op, String afield, String gfield) throws ParsingException {
         afield=disambiguateName(afield);
@@ -207,7 +207,7 @@ public class LogicalPlan {
         a single ORDER BY field.
         @param field the field to order by
         @param asc true if should be ordered in ascending order, false for descending order
-     * @throws ParsingException 
+     * @throws ParsingException
     */
     public void addOrderBy(String field, boolean asc) throws ParsingException {
         field=disambiguateName(field);
@@ -217,7 +217,7 @@ public class LogicalPlan {
     }
 
     /** Given a name of a field, try to figure out what table it belongs to by looking
-     *   through all of the tables added via {@link #addScan}. 
+     *   through all of the tables added via {@link #addScan}.
      *  @return A fully qualified name of the form tableAlias.name.  If the name parameter is already qualified
      *   with a table name, simply returns name.
      *  @throws ParsingException if the field cannot be found in any of the tables, or if the
@@ -228,7 +228,7 @@ public class LogicalPlan {
         String[] fields = name.split("[.]");
         if (fields.length == 2 && (!fields[0].equals("null")))
             return name;
-        if (fields.length > 2) 
+        if (fields.length > 2)
             throw new ParsingException("Field " + name + " is not a valid field reference.");
         if (fields.length == 2)
             name = fields[1];
@@ -240,7 +240,7 @@ public class LogicalPlan {
             LogicalScanNode table = tableIt.next();
             try {
                 TupleDesc td = Database.getCatalog().getDatabaseFile(table.t).getTupleDesc();
-//                int id = 
+//                int id =
                   td.fieldNameToIndex(name);
                 if (tableName == null) {
                     tableName = table.alias;
@@ -259,7 +259,7 @@ public class LogicalPlan {
     }
 
     /** Convert the aggregate operator name s into an Aggregator.op operation.
-     *  @throws ParsingException if s is not a valid operator name 
+     *  @throws ParsingException if s is not a valid operator name
      */
     static Aggregator.Op getAggOp(String s) throws ParsingException {
         s = s.toUpperCase();
@@ -283,7 +283,7 @@ public class LogicalPlan {
      *    query plan should be given.
      *  @throws ParsingException if the logical plan is not valid
      *  @return A OpIterator representing this plan.
-     */ 
+     */
     public OpIterator physicalPlan(TransactionId t, Map<String,TableStats> baseTableStats, boolean explain) throws ParsingException {
         Iterator<LogicalScanNode> tableIt = tables.iterator();
         HashMap<String,String> equivMap = new HashMap<String,String>();
@@ -298,7 +298,7 @@ public class LogicalPlan {
             } catch (NoSuchElementException e) {
                 throw new ParsingException("Unknown table " + table.t);
             }
-            
+
             subplanMap.put(table.alias,ss);
             String baseTableName = Database.getCatalog().getTableName(table.t);
             statsMap.put(baseTableName, baseTableStats.get(baseTableName));
@@ -306,7 +306,7 @@ public class LogicalPlan {
 
         }
 
-        Iterator<LogicalFilterNode> filterIt = filters.iterator();        
+        Iterator<LogicalFilterNode> filterIt = filters.iterator();
         while (filterIt.hasNext()) {
             LogicalFilterNode lf = filterIt.next();
             OpIterator subplan = subplanMap.get(lf.tableAlias);
@@ -317,7 +317,7 @@ public class LogicalPlan {
             Field f;
             Type ftyp;
             TupleDesc td = subplanMap.get(lf.tableAlias).getTupleDesc();
-            
+
             try {//td.fieldNameToIndex(disambiguateName(lf.fieldPureName))
                 ftyp = td.getFieldType(td.fieldNameToIndex(lf.fieldQuantifiedName));
             } catch (java.util.NoSuchElementException e) {
@@ -337,18 +337,18 @@ public class LogicalPlan {
             subplanMap.put(lf.tableAlias, new Filter(p, subplan));
 
             TableStats s = statsMap.get(Database.getCatalog().getTableName(this.getTableId(lf.tableAlias)));
-            
+
             double sel= s.estimateSelectivity(subplan.getTupleDesc().fieldNameToIndex(lf.fieldQuantifiedName), lf.p, f);
             filterSelectivities.put(lf.tableAlias, filterSelectivities.get(lf.tableAlias) * sel);
 
             //s.addSelectivityFactor(estimateFilterSelectivity(lf,statsMap));
         }
-        
-        JoinOptimizer jo = new JoinOptimizer(this,joins);
 
+        JoinOptimizer jo = new JoinOptimizer(this,joins);
         joins = jo.orderJoins(statsMap,filterSelectivities,explain);
 
         Iterator<LogicalJoinNode> joinIt = joins.iterator();
+
         while (joinIt.hasNext()) {
             LogicalJoinNode lj = joinIt.next();
             OpIterator plan1;
@@ -370,17 +370,17 @@ public class LogicalPlan {
 
             if (isSubqueryJoin) {
                 plan2 = ((LogicalSubplanJoinNode)lj).subPlan;
-                if (plan2 == null) 
+                if (plan2 == null)
                     throw new ParsingException("Invalid subquery.");
-            } else { 
+            } else {
                 plan2 = subplanMap.get(t2name);
             }
-            
+
             if (plan1 == null)
                 throw new ParsingException("Unknown table in WHERE clause " + lj.t1Alias);
             if (plan2 == null)
                 throw new ParsingException("Unknown table in WHERE clause " + lj.t2Alias);
-            
+
             OpIterator j;
             j = jo.instantiateJoin(lj,plan1,plan2);
             subplanMap.put(t1name, j);
@@ -396,16 +396,16 @@ public class LogicalPlan {
                             s.setValue(t1name);
                         }
                     }
-                    
+
                 // subplanMap.put(lj.t2, j);
             }
-            
+
         }
 
         if (subplanMap.size() > 1) {
             throw new ParsingException("Query does not include join expressions joining all nodes!");
         }
-        
+
         OpIterator node =  (OpIterator)(subplanMap.entrySet().iterator().next().getValue());
 
         //walk the select list, to determine order in which to project output fields
@@ -458,6 +458,7 @@ public class LogicalPlan {
                 }
         }
 
+
         if (hasAgg) {
             TupleDesc td = node.getTupleDesc();
             Aggregate aggNode;
@@ -477,6 +478,7 @@ public class LogicalPlan {
         if (hasOrderBy) {
             node = new OrderBy(node.getTupleDesc().fieldNameToIndex(oByField), oByAsc, node);
         }
+
 
         return new Project(outFields, outTypes, node);
     }
@@ -500,7 +502,7 @@ public class LogicalPlan {
         TransactionId tid = new TransactionId();
 
         LogicalPlan lp = new LogicalPlan();
-        
+
         lp.addScan(table1.getId(), "t1");
 
         try {
@@ -540,7 +542,7 @@ public class LogicalPlan {
         } catch (Exception e) {
             e.printStackTrace();
         }
-       
+
     }
 
 }
