@@ -382,7 +382,7 @@ public class LogicalPlan {
                 throw new ParsingException("Unknown table in WHERE clause " + lj.t2Alias);
 
             OpIterator j;
-            j = jo.instantiateJoin(lj,plan1,plan2);
+            j = JoinOptimizer.instantiateJoin(lj,plan1,plan2);
             subplanMap.put(t1name, j);
 
             if (!isSubqueryJoin) {
@@ -406,7 +406,7 @@ public class LogicalPlan {
             throw new ParsingException("Query does not include join expressions joining all nodes!");
         }
 
-        OpIterator node =  (OpIterator)(subplanMap.entrySet().iterator().next().getValue());
+        OpIterator node =  subplanMap.entrySet().iterator().next().getValue();
 
         //walk the select list, to determine order in which to project output fields
         ArrayList<Integer> outFields = new ArrayList<Integer>();

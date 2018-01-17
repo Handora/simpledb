@@ -6,13 +6,13 @@ import java.util.Map;
 /**
  * A utility class, which computes the estimated cardinalities of an operator
  * tree.
- * 
+ *
  * All methods have been fully provided. No extra codes are required.
  */
 public class OperatorCardinality {
 
     /**
-     * 
+     *
      * @param tableAliasToId
      *            table alias to table id mapping
      * @param tableStats
@@ -121,8 +121,8 @@ public class OperatorCardinality {
             child1Card = child1O.getEstimatedCardinality();
             child1Card = child1Card > 0 ? child1Card : 1;
         } else if (child1 instanceof SeqScan) {
-            child1Card = (int) (tableStats.get(((SeqScan) child1)
-                    .getTableName()).estimateTableCardinality(1.0));
+            child1Card = tableStats.get(((SeqScan) child1)
+                    .getTableName()).estimateTableCardinality(1.0);
         }
 
         if (child2 instanceof Operator) {
@@ -133,8 +133,8 @@ public class OperatorCardinality {
             child2Card = child2O.getEstimatedCardinality();
             child2Card = child2Card > 0 ? child2Card : 1;
         } else if (child2 instanceof SeqScan) {
-            child2Card = (int) (tableStats.get(((SeqScan) child2)
-                    .getTableName()).estimateTableCardinality(1.0));
+            child2Card = tableStats.get(((SeqScan) child2)
+                    .getTableName()).estimateTableCardinality(1.0);
         }
 
         j.setEstimatedCardinality(JoinOptimizer.estimateTableJoinCardinality(j
@@ -178,8 +178,8 @@ public class OperatorCardinality {
             child1Card = child1O.getEstimatedCardinality();
             child1Card = child1Card > 0 ? child1Card : 1;
         } else if (child1 instanceof SeqScan) {
-            child1Card = (int) (tableStats.get(((SeqScan) child1)
-                    .getTableName()).estimateTableCardinality(1.0));
+            child1Card = tableStats.get(((SeqScan) child1)
+                    .getTableName()).estimateTableCardinality(1.0);
         }
 
         if (child2 instanceof Operator) {
@@ -190,8 +190,8 @@ public class OperatorCardinality {
             child2Card = child2O.getEstimatedCardinality();
             child2Card = child2Card > 0 ? child2Card : 1;
         } else if (child2 instanceof SeqScan) {
-            child2Card = (int) (tableStats.get(((SeqScan) child2)
-                    .getTableName()).estimateTableCardinality(1.0));
+            child2Card = tableStats.get(((SeqScan) child2)
+                    .getTableName()).estimateTableCardinality(1.0);
         }
 
         j.setEstimatedCardinality(JoinOptimizer.estimateTableJoinCardinality(j
@@ -220,8 +220,8 @@ public class OperatorCardinality {
         }
 
         if (child instanceof SeqScan) {
-            childCard = (int) (tableStats.get(((SeqScan) child).getTableName())
-                    .estimateTableCardinality(1.0));
+            childCard = tableStats.get(((SeqScan) child).getTableName())
+                    .estimateTableCardinality(1.0);
         }
 
         String[] tmp = a.groupFieldName().split("[.]");
