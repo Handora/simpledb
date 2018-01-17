@@ -3,6 +3,7 @@ package simpledb;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -75,6 +76,7 @@ public class TableStats {
     private int numFields;
     private boolean[] isInteger;
     private Map<Integer, Object> histograms;
+    private int[] distinctFields;
 
     /**
      * Create a new TableStats object, that keeps track of statistics on each
@@ -86,6 +88,7 @@ public class TableStats {
      *            The cost per page of IO. This doesn't differentiate between
      *            sequential-scan IO and disk seeks.
      */
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public TableStats(int tableid, int ioCostPerPage) {
         // For this function, you'll have to get the
         // DbFile for the table in question,
@@ -104,6 +107,8 @@ public class TableStats {
         this.min = new int[numFields];
         this.isInteger = new boolean[numFields];
         this.histograms = new HashMap<>();
+        this.distinctFields = new int[numFields];
+        HashSet<Object>[] fieldSet = new HashSet[numFields];
 
         // TODO
         // How to deal with transaction id
@@ -117,11 +122,17 @@ public class TableStats {
                 int i = 0;
                 while (it2.hasNext()) {
                     Field f = it2.next();
+                    if (fieldSet[i] == null) {
+                        fieldSet[i] = new HashSet<Object>();
+                    }
+
                     if (!f.getType().equals(Type.INT_TYPE)) {
+                        fieldSet[i].add(((StringField)f).getValue());
                         this.isInteger[i] = false;
                         i++;
                         continue;
                     }
+                    fieldSet[i].add(((IntField)f).getValue());
                     this.isInteger[i] = true;
                     if (this.nTuples == 0) {
                         this.max[i] = this.min[i] = ((IntField)f).getValue();
@@ -139,9 +150,18 @@ public class TableStats {
                 this.nTuples++;
             }
             it.close();
+            for (int i=0; i<numFields; i++) {
+                this.distinctFields[i] = fieldSet[i].size();
+                fieldSet[i] = null;
+            }
+            fieldSet = null;
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public int getDistinctNum(int i) {
+        return this.distinctFields[i];
     }
 
     /**

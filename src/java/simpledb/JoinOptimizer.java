@@ -169,7 +169,17 @@ public class JoinOptimizer {
             } else if (t2pkey) {
                 return card1;
             } else {
-                return card1 > card2 ? card1 : card2;
+                // TODO
+                // may add throw to protect the safety
+                Integer t1Id = tableAliasToId.get(table1Alias);
+                Integer t2Id = tableAliasToId.get(table2Alias);
+                TableStats st1 = stats.get(Database.getCatalog().getTableName(t1Id));
+                TableStats st2 = stats.get(Database.getCatalog().getTableName(t2Id));
+                TupleDesc td1 = Database.getCatalog().getTupleDesc(t1Id);
+                TupleDesc td2 = Database.getCatalog().getTupleDesc(t2Id);
+                double select = 1.0 / (double)(Math.max(st1.getDistinctNum(td1.fieldNameToIndex(field1PureName)),
+                  st2.getDistinctNum(td2.fieldNameToIndex(field2PureName))));
+                return (int)(select * (double)(card1 * card2));
             }
         } else {
             int card = (int)(0.3 * (double)(card1 * card2));
