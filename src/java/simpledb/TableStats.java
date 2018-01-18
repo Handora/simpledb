@@ -158,6 +158,38 @@ public class TableStats {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        try {
+            it.open();
+            while (it.hasNext()) {
+                Tuple t = it.next();
+                int i = 0;
+                while (i<this.numFields) {
+                    if (this.isInteger[i]) {
+                        IntHistogram ih = (IntHistogram)this.histograms.get(i);
+                        if (ih == null) {
+                            ih = new IntHistogram(NUM_HIST_BINS, this.min[i], this.max[i]);
+                            this.histograms.put(i, ih);
+                        }
+                        IntField intf = (IntField)t.getField(i);
+                        ih.addValue(intf.getValue());
+                    } else {
+                        StringHistogram sh = (StringHistogram)this.histograms.get(i);
+                        if (sh == null) {
+                            sh = new StringHistogram(NUM_HIST_BINS);
+                            this.histograms.put(i, sh);
+                        }
+                        StringField sf = (StringField)t.getField(i);
+                        sh.addValue(sf.getValue());
+                    }
+                    i++;
+                }
+            }
+            it.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 
     public int getDistinctNum(int i) {
@@ -226,52 +258,20 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
+        try {
+          if (field < 0 || field >= numFields) {
+            throw new DbException("wrong field number");
+          }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
         if (this.isInteger[field]) {
-            IntHistogram histogram;
-            if (histograms.containsKey(field)) {
-                histogram = (IntHistogram)histograms.get(field);
-            } else {
-                histogram = new IntHistogram(NUM_HIST_BINS, this.min[field], this.max[field]);
-                DbFileIterator it = this.file.iterator(null);
-                try {
-                    it.open();
-                    while (it.hasNext()) {
-                        Tuple t = it.next();
-
-                        IntField f = (IntField)t.getField(field);
-                        histogram.addValue(f.getValue());
-                    }
-                    it.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                histograms.put(field, histogram);
-            }
-
-            return histogram.estimateSelectivity(op, ((IntField)constant).getValue());
+            IntHistogram h = (IntHistogram)this.histograms.get(field);
+            return h.estimateSelectivity(op, ((IntField)constant).getValue());
         } else {
-            StringHistogram histogram;
-            if (histograms.containsKey(field)) {
-                histogram = (StringHistogram)histograms.get(field);
-            } else {
-                histogram = new StringHistogram(NUM_HIST_BINS);
-                DbFileIterator it = this.file.iterator(null);
-                try {
-                    it.open();
-                    while (it.hasNext()) {
-                        Tuple t = it.next();
-
-                        StringField f = (StringField)t.getField(field);
-                        histogram.addValue(f.getValue());
-                    }
-                    it.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                histograms.put(field, histogram);
-            }
-
-            return histogram.estimateSelectivity(op, ((StringField)constant).getValue());
+            StringHistogram h = (StringHistogram)this.histograms.get(field);
+            return h.estimateSelectivity(op, ((StringField)constant).getValue());
         }
     }
 

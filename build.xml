@@ -217,6 +217,7 @@
                     <include name="**/*Test.class"/>
                     <exclude name="**/*$*.class"/>
                     <exclude name="simpledb/systemtest/*.class"/>
+                    <exclude name="simpledb/customtest/*.class"/>
                 </fileset>
             </batchtest>
         </RunJunit>
@@ -227,6 +228,16 @@
             <batchtest>
                 <fileset dir="${build.test}">
                     <include name="simpledb/systemtest/*Test.class"/>
+                </fileset>
+            </batchtest>
+        </RunJunit>
+    </target>
+
+    <target name="customtest" depends="testcompile" description="Run all system tests">
+        <RunJunit>
+            <batchtest>
+                <fileset dir="${build.test}">
+                    <include name="simpledb/customtest/*Test.class"/>
                 </fileset>
             </batchtest>
         </RunJunit>
@@ -261,6 +272,22 @@
 
         <RunJunit>
             <test name="simpledb.systemtest.${test}"/>
+        </RunJunit>
+    </target>
+
+    <target name="runcustest" depends="testcompile"
+            description="Runs the custom test you specify on the command line with -Dtest=">
+        <!-- Check for -Dtest command line argument -->
+        <fail unless="test" message="You must run this target with -Dtest=TestName"/>
+
+        <!-- Check if the class exists -->
+        <available property="test.exists" classname="simpledb.customtest.${test}">
+                <classpath refid="classpath.test" />
+        </available>
+        <fail unless="test.exists" message="Test ${test} could not be found"/>
+
+        <RunJunit>
+            <test name="simpledb.customtest.${test}"/>
         </RunJunit>
     </target>
 
@@ -302,7 +329,7 @@
     </subant>
     </target>
 
-    <target name="test-and-handin" depends="test,systemtest,handin"
+    <target name="test-and-handin" depends="test,systemtest,customtest,handin"
         description="Run all the tests and system tests; if they succeed, create a tarball of the source code to submit" />
 
 </project>
