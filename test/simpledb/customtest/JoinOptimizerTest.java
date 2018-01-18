@@ -333,4 +333,33 @@ public class JoinOptimizerTest extends SimpleDbTestBase {
         // Make sure that "bigTable" is the outermost table in the join
         Assert.assertEquals(result.get(result.size() - 1).t2Alias, "bigTable");
     }
+
+    /*
+     * test for the `Cartesian Product`, where if you don't handle it well,
+     * you will get an error
+     */
+    @Test
+    public void CartesianProductTest() throws ParsingException {
+        TransactionId tid = new TransactionId();
+        Parser p = new Parser();
+
+        Vector<LogicalJoinNode> nodes = new Vector<LogicalJoinNode>();
+
+        nodes.add(new LogicalJoinNode("a", "b", "c1", "c1", Predicate.Op.EQUALS));
+        nodes.add(new LogicalJoinNode("c", "d", "c1", "c1", Predicate.Op.EQUALS));
+        JoinOptimizer j = new JoinOptimizer(p.generateLogicalPlan(tid, "select a.c0, b.c1, c.c2," +
+          "d.c3 from " + tableName1 + " a, " + tableName1 + " b, " + tableName1 +
+          " c, " + tableName1 + " d where a.c1 = b.c1 and c.c1 = d.c1;"), nodes);
+        HashMap<String, TableStats> stats = new HashMap<String, TableStats>();
+        HashMap<String, Double> filterSelectivities = new HashMap<String, Double>();
+        stats.put(tableName1, stats1);
+        stats.put(tableName2, stats2);
+        filterSelectivities.put("a", 0.2);
+        filterSelectivities.put("b", 0.2);
+        filterSelectivities.put("c", 0.2);
+        filterSelectivities.put("d", 0.2);
+
+        Vector<LogicalJoinNode> result = j.orderJoins(stats, filterSelectivities, false);
+        Assert.assertEquals(result.size(), 0);
+    }
 }
