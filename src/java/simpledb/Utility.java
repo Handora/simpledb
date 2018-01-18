@@ -136,7 +136,7 @@ public class Utility {
         Database.getCatalog().addTable(hf, UUID.randomUUID().toString());
         return hf;
     }
-    
+
     public static HeapFile openHeapFile(int cols, String colPrefix, File f) {
         // create the HeapFile and add it to the catalog
     	TupleDesc td = getTupleDesc(cols, colPrefix);
@@ -153,5 +153,15 @@ public class Utility {
         }
         return out;
     }
-}
 
+    public static void printTuple(Tuple t) {
+        for (int i=0; i<t.getTupleDesc().numFields(); i++) {
+            if (t.getField(i).getType() == Type.INT_TYPE) {
+                System.out.printf("%d ", ((IntField)t.getField(i)).getValue());
+            } else {
+                System.out.printf("%s ", ((StringField)t.getField(i)).getValue());
+            }
+        }
+        System.out.printf("\n");
+    }
+}

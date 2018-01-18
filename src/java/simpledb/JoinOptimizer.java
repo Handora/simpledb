@@ -116,7 +116,11 @@ public class JoinOptimizer {
             // Just use the basic nested-loops joins
             // joincost(t1 join t2) = scancost(t1) + ntups(t1) x scancost(t2) //IO cost
             //                       + ntups(t1) x ntups(t2)  //CPU cost
-            return cost1 + cost2 * card1 + card1 * card2;
+            if (j.p == Predicate.Op.EQUALS) {
+                return 3 * (cost1 + cost2);
+            } else {
+                return cost1 + cost2 * card1 + card1 * card2;
+            }
         }
     }
 

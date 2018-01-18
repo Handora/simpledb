@@ -7,4 +7,4 @@
 5. A cost model that accounts for caching. The methods to estimate scan and join cost do not account for caching in the buffer pool. You should extend the cost model to account for caching effects. This is tricky because multiple joins are running simultaneously due to the iterator model, and so it may be hard to predict how much memory each will have access to using the simple buffer pool we have implemented in previous labs.
 6. Improved join algorithms and algorithm selection. Our current cost estimation and join operator selection algorithms (see instantiateJoin() in JoinOptimizer.java) only consider nested loops joins. Extend these methods to use one or more additional join algorithms (for example, some form of in memory hashing using a HashMap).
 7. Bushy plans. Improve the provided orderJoins() and other helper methods to generate bushy joins. Our query plan generation and visualization algorithms are perfectly capable of handling bushy plans; for example, if orderJoins() returns the vector (t1 join t2 ; t3 join t4 ; t2 join t3), this will correspond to a bushy plan with the (t2 join t3) node at the top.
-
+8. Do Grace hash joins!

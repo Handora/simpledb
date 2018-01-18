@@ -152,6 +152,13 @@ public class JoinOptimizerTest extends SimpleDbTestBase {
 
         Assert.assertTrue((int)(1.0/(double)((Math.max(distinctNum1, distinctNum2))) * stats1.estimateTableCardinality(0.4) * stats2.estimateTableCardinality(0.5)) == cardinality);
 
+        double cost = j.estimateJoinCost(new LogicalJoinNode("t1", "t2",
+                "c" + Integer.toString(3), "c" + Integer.toString(4),
+                Predicate.Op.EQUALS), stats1.estimateTableCardinality(0.8),
+                stats2.estimateTableCardinality(0.2), 24567, 12345);
+
+        Assert.assertEquals(3*(24567 + 12345), (int)cost);
+
     }
 
 
@@ -185,7 +192,7 @@ public class JoinOptimizerTest extends SimpleDbTestBase {
 
         // Create a large set of tables, and add tuples to the tables
         ArrayList<ArrayList<Integer>> smallHeapFileTuples = new ArrayList<ArrayList<Integer>>();
-        HeapFile smallHeapFileA = SystemTestUtil.createRandomHeapFile(2, 100,
+        HeapFile smallHeapFileA = SystemTestUtil.createRandomHeapFile(2, 10000,
                 Integer.MAX_VALUE, null, smallHeapFileTuples, "c");
         HeapFile smallHeapFileB = createDuplicateHeapFile(smallHeapFileTuples,
                 2, "c");
