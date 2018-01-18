@@ -254,6 +254,8 @@ public class JoinOptimizer {
             for (BitSet sets: els) {
                 CostCard bestPlan = new CostCard();
                 bestPlan.cost = Double.MAX_VALUE;
+                // use unpossible number -100 to express that no plan is choosed(Cartesian Product)
+                bestPlan.card = -100;
                 for (int j=0; j<joins.size(); j++) {
                     if (!sets.get(j)) {
                         continue;
@@ -263,9 +265,10 @@ public class JoinOptimizer {
                         bestPlan = cc;
                     }
                 }
-
-                pc.addPlan(sets, bestPlan.cost, bestPlan.card, bestPlan.plan);
-                if (i == joins.size()) {
+                if (bestPlan.card != -100) {
+                    pc.addPlan(sets, bestPlan.cost, bestPlan.card, bestPlan.plan);
+                }
+                if (i == joins.size() && bestPlan.card != -100) {
                     if (explain) {
                         printJoins(pc.getOrder(sets), pc, stats, filterSelectivities);
                     }
