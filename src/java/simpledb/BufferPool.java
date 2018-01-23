@@ -29,6 +29,8 @@ public class BufferPool {
     /** Maximum number of pages in this buffer pool */
     private static int numPages;
 
+    public static LockManager manager;
+
     /** Page storage */
     private class PageBuffer {
         private Page p;
@@ -93,14 +95,25 @@ public class BufferPool {
 
     private class BufferChain {
         private PageBuffer head;
+        private HashMap<PageId, PageBuffer> pageMap;
 
         public BufferChain() {
             head = new PageBuffer(null, null, null, true);
             head.setNext(head);
             head.setPrev(head);
+            pageMap = new HashMap<>();
         }
 
         public void insertFirst(PageBuffer pb) {
+            this.head.getNext().setPrev(pb);
+            pb.setNext(this.head.getNext());
+            pb.setPrev(this.head);
+            this.head.setNext(pb);
+
+            pageMap.put(pb.p.getId(), pb);
+        }
+
+        public void insertWithoutSetIntoMap(PageBuffer pb) {
             this.head.getNext().setPrev(pb);
             pb.setNext(this.head.getNext());
             pb.setPrev(this.head);
@@ -114,16 +127,13 @@ public class BufferPool {
 
             pb.getPrev().setNext(pb.getNext());
             pb.getNext().setPrev(pb.getPrev());
+
+            pageMap.remove(pb.p.getId());
         }
 
         public PageBuffer find(PageId pid) {
-            for (PageBuffer it = this.head.next; it != this.head; it=it.getNext()) {
-                Page p = it.getPage();
-                if (pid.equals(p.getId())) {
-                    return it;
-                }
-            }
-            return null;
+            PageBuffer pb = pageMap.get(pid);
+            return pb;
         }
 
         public PageBuffer deleteLast() throws DbException {
@@ -134,6 +144,20 @@ public class BufferPool {
             PageBuffer tmp = this.head.getPrev();
             this.head.setPrev(tmp.getPrev());
             tmp.getPrev().setNext(this.head);
+
+            pageMap.remove(tmp.p.getId());
+            return tmp;
+        }
+
+        public PageBuffer deleteLastWithoutSetOutofMap() throws DbException {
+            if (this.head.getPrev() == this.head) {
+                throw new DbException("delete page from empty bufferpool");
+            }
+
+            PageBuffer tmp = this.head.getPrev();
+            this.head.setPrev(tmp.getPrev());
+            tmp.getPrev().setNext(this.head);
+
             return tmp;
         }
 
@@ -162,9 +186,10 @@ public class BufferPool {
       	BufferPool.numPages = numPages;
         buffer = new BufferChain();
         empty = new BufferChain();
+        manager = new LockManager();
         for (int i=0; i<numPages; i++) {
             PageBuffer pb = new PageBuffer();
-            empty.insertFirst(pb);
+            empty.insertWithoutSetIntoMap(pb);
         }
     }
 
@@ -197,38 +222,34 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
       	if (pid == null)
       	    throw new DbException("null pageId");
 
-        PageBuffer pb = this.buffer.find(pid);
-        if (pb != null) {
-            buffer.delete(pb);
-            buffer.insertFirst(pb);
-            return pb.getPage();
-        } else {
-            if (empty.isEmpty()) {
-                pb = buffer.deleteLast();
-                if (pb.getPage().isDirty() != null) {
-                    HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
-                    try {
-                        h.writePage(pb.getPage());
-                    } catch (IOException e) {
-                        // TODO
-                        // handle cleanly
-                        System.out.println("write page error");
-                    }
-                    pb.getPage().markDirty(false, null);
-                }
+        if (perm == Permissions.READ_ONLY)
+            manager.lockRead(tid, pid);
+        else
+            manager.lockWrite(tid, pid);
+
+        synchronized(this) {
+            PageBuffer pb = this.buffer.find(pid);
+            if (pb != null) {
+                buffer.delete(pb);
+                buffer.insertFirst(pb);
+                return pb.getPage();
             } else {
-                pb = empty.deleteLast();
+                if (empty.isEmpty()) {
+                    evictPage();
+                }
+
+                pb = empty.deleteLastWithoutSetOutofMap();
+                HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+                pb.setPage(hf.readPage(pid));
+                buffer.insertFirst(pb);
+                return pb.getPage();
             }
-            HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
-            pb.setPage(hf.readPage(pid));
-            buffer.insertFirst(pb);
-            return pb.getPage();
         }
     }
 
@@ -244,6 +265,7 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for lab1|lab2
+        manager.unlock(tid, pid);
     }
 
     /**
@@ -298,26 +320,23 @@ public class BufferPool {
         HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(tableId);
         ArrayList<Page> ar = hf.insertTuple(tid, t);
         for (Page p: ar) {
-            p.markDirty(true, tid);
-            PageBuffer pb = buffer.find(p.getId());
+            synchronized(this) {
+                p.markDirty(true, tid);
+                PageBuffer pb = buffer.find(p.getId());
 
-            if (pb != null) {
-                pb.setPage(p);
-                buffer.delete(pb);
-                buffer.insertFirst(pb);
-            } else {
-                if (empty.isEmpty()) {
-                    pb = buffer.deleteLast();
-                    if (pb.getPage().isDirty() != null) {
-                        HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
-                        h.writePage(pb.getPage());
-                        pb.getPage().markDirty(false, null);
-                    }
+                if (pb != null) {
+                    pb.setPage(p);
+                    buffer.delete(pb);
+                    buffer.insertFirst(pb);
                 } else {
-                    pb = empty.deleteLast();
+                    if (empty.isEmpty()) {
+                        evictPage();
+                    }
+
+                    pb = empty.deleteLastWithoutSetOutofMap();
+                    pb.setPage(p);
+                    buffer.insertFirst(pb);
                 }
-                pb.setPage(p);
-                buffer.insertFirst(pb);
             }
         }
     }
@@ -342,26 +361,23 @@ public class BufferPool {
         HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
         ArrayList<Page> ar = hf.deleteTuple(tid, t);
         for (Page p: ar) {
-            p.markDirty(true, tid);
-            PageBuffer pb = buffer.find(p.getId());
+            synchronized(this) {
+                p.markDirty(true, tid);
+                PageBuffer pb = buffer.find(p.getId());
 
-            if (pb != null) {
-                pb.setPage(p);
-                buffer.delete(pb);
-                buffer.insertFirst(pb);
-            } else {
-                if (empty.isEmpty()) {
-                    pb = buffer.deleteLast();
-                    if (pb.getPage().isDirty() != null) {
-                        HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
-                        h.writePage(pb.getPage());
-                        pb.getPage().markDirty(false, null);
-                    }
+                if (pb != null) {
+                    pb.setPage(p);
+                    buffer.delete(pb);
+                    buffer.insertFirst(pb);
                 } else {
-                    pb = empty.deleteLast();
+                    if (empty.isEmpty()) {
+                        evictPage();
+                    }
+
+                    pb = empty.deleteLastWithoutSetOutofMap();
+                    pb.setPage(p);
+                    buffer.insertFirst(pb);
                 }
-                pb.setPage(p);
-                buffer.insertFirst(pb);
             }
         }
     }
@@ -402,11 +418,9 @@ public class BufferPool {
             try {
                 buffer.delete(pb);
             } catch(DbException e) {
-                // TODO:
-                //    nicer work
-                System.out.println("error in discardPage");
+                e.printStackTrace();
             }
-            empty.insertFirst(pb);
+            empty.insertWithoutSetIntoMap(pb);
         }
     }
 
@@ -449,13 +463,11 @@ public class BufferPool {
             try {
                 h.writePage(pb.getPage());
             } catch(IOException e) {
-                // TODO:
-                //    nicer work
-                System.out.println("writePage error");
+                e.printStackTrace();
             }
             pb.getPage().markDirty(false, null);
         }
-        empty.insertFirst(pb);
+        empty.insertWithoutSetIntoMap(pb);
     }
 
 }

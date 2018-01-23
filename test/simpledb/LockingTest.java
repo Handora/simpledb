@@ -1,4 +1,4 @@
-package simpledb;
+  package simpledb;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -194,4 +194,3 @@ public class LockingTest extends TestUtil.CreateHeapFile {
   }
 
 }
-

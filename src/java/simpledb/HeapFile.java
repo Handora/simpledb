@@ -32,7 +32,7 @@ public class HeapFile implements DbFile {
             throws DbException, TransactionAbortedException {
             tuples = new LinkedList<>();
             pid = 0;
-            HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
+            HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), Permissions.READ_ONLY);
             if (p == null) {
                 return;
             }
@@ -54,7 +54,7 @@ public class HeapFile implements DbFile {
                 if (pid >= numPages()) {
                     return null;
                 } else {
-                    HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), null);
+                    HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), pid), Permissions.READ_ONLY);
                     if (p == null) {
                         return null;
                     }
@@ -180,7 +180,7 @@ public class HeapFile implements DbFile {
         int len = numPages();
         int i;
         for (i=0; i<len; i++) {
-            HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), null);
+            HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, new HeapPageId(getId(), i), Permissions.READ_WRITE);
             if (p == null) {
                 throw new DbException("Internal error");
             }
@@ -192,6 +192,7 @@ public class HeapFile implements DbFile {
                 a.add(p);
                 return a;
             }
+            BufferPool.manager.unlock(tid, new HeapPageId(getId(), i));
         }
 
         HeapPage p = new HeapPage(new HeapPageId(getId(), i), HeapPage.createEmptyPageData());
@@ -210,7 +211,7 @@ public class HeapFile implements DbFile {
             TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), null);
+        HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), Permissions.READ_WRITE);
         if (p == null)
           return null;
         p.deleteTuple(t);
