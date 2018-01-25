@@ -3,9 +3,24 @@ package simpledb;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+
 public class LockManager {
-    private HashMap<TransactionId, HashMap<PageId, Permissions>> transMap;
-    private HashMap<PageId, ReentrantReadWriteLock> pageMap;
+    private Map<TransactionId, HashSet<PageId>> transMap;
+    private Map<PageId, RWLock> pageMap;
+
+    private class RWLock {
+        public int readCount;
+        public boolean isWriteLocked;
+        public boolean locked;
+        public PageId pid;
+
+        public RWLock(PageId pid) {
+            this.readCount = 0;
+            this.isWriteLocked = false;
+            this.locked = false;
+            this.pid = pid;
+        }
+    }
 
     public LockManager() {
         transMap = new HashMap<>();
@@ -13,124 +28,156 @@ public class LockManager {
     }
 
     public void lockRead(TransactionId tid, PageId pid) {
-        ReentrantReadWriteLock rl;
-        HashMap<PageId, Permissions> mp;
-        synchronized(this) {
-          do {
-                mp = transMap.get(tid);
-                if (mp == null) {
-                    mp = new HashMap<>();
-                    transMap.put(tid, mp);
-                } else if (mp.get(pid) != null) {
+        // we don't need to synchronize on tid,
+        // because the same tid will not happnen the same time
+        synchronized(pid) {
+            do {
+                RWLock l = pageMap.get(pid);
+                if (l == null) {
+                    l = new RWLock(pid);
+                    pageMap.put(pid, l);
+                }
+
+                HashSet<PageId> trans = transMap.get(tid);
+                if (trans == null) {
+                    trans = new HashSet<>();
+                    transMap.put(tid, trans);
+                }
+
+                if (l.locked == false) {
+                    l.locked = true;
+                    l.readCount = 1;
+                    l.isWriteLocked = false;
+                    trans.add(l.pid);
+
                     return ;
                 }
 
-                rl = pageMap.get(pid);
-                if (rl == null) {
-                    rl = new ReentrantReadWriteLock();
-                    rl.readLock().lock();
-                    pageMap.put(pid, rl);
+                boolean isOwned = trans.contains(l.pid);
+                if (isOwned) {
+                    return ;
                 } else {
-                    if (rl.isWriteLocked()) {
-                        break;
+                    if (!l.isWriteLocked) {
+                        l.readCount++;
+                        trans.add(l.pid);
+                        return ;
                     } else {
-                        rl.readLock().lock();
+                        try {
+                            pid.wait();
+                        } catch(InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        continue;
                     }
                 }
-
-                mp.put(pid, Permissions.READ_ONLY);
-                return ;
-          } while (false);
-      }
-
-      rl.readLock().lock();
-      // TODO
-      // do this will race?
-      mp.put(pid, Permissions.READ_ONLY);
+            } while (true);
+        }
     }
 
     public void lockWrite (TransactionId tid, PageId pid) {
-        ReentrantReadWriteLock rl;
-        HashMap<PageId, Permissions> mp;
-        synchronized(this) {
-          do {
-                mp = transMap.get(tid);
-                rl = pageMap.get(pid);
-                if (mp == null) {
-                    mp = new HashMap<>();
-                    transMap.put(tid, mp);
-                } else if (mp.get(pid) != null) {
-                    if (mp.get(pid) == Permissions.READ_ONLY && rl.getReadLockCount() == 1) {
-                        // TODO
-                        //   how to deal with race condition
-                        rl.readLock().unlock();
-                        rl.writeLock().lock();
-                        mp.put(pid, Permissions.READ_WRITE);
-                        return ;
-                    } else if (mp.get(pid) == Permissions.READ_WRITE) {
-                        return ;
+        synchronized(pid) {
+            do {
+                RWLock l = pageMap.get(pid);
+                if (l == null) {
+                    l = new RWLock(pid);
+                    pageMap.put(pid, l);
+                }
+
+                HashSet<PageId> trans = transMap.get(tid);
+                if (trans == null) {
+                    trans = new HashSet<>();
+                    transMap.put(tid, trans);
+                }
+
+                if (l.locked == false) {
+                    l.locked = true;
+                    l.readCount = 0;
+                    l.isWriteLocked = true;
+                    trans.add(l.pid);
+                    return ;
+                }
+
+                boolean isOwned = trans.contains(l.pid);
+                if (isOwned) {
+                    if (!l.isWriteLocked) {
+                        if (l.readCount == 1) {
+                            l.readCount = 0;
+                            l.isWriteLocked = true;
+                            return ;
+                        } else {
+                            try {
+                                pid.wait();
+                            } catch(InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            continue;
+                        }
                     } else {
-                        break;
+                        return ;
                     }
-                }
-
-
-                if (rl == null) {
-                    rl = new ReentrantReadWriteLock();
-                    rl.writeLock().lock();
-                    pageMap.put(pid, rl);
                 } else {
-                    break;
+                    try {
+                        pid.wait();
+                    } catch(InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    continue;
+                }
+            } while (true);
+        }
+    }
+
+
+    public void unlock(TransactionId tid, PageId pid) {
+        synchronized(pid) {
+            RWLock l = pageMap.get(pid);
+            if (l == null) {
+                l = new RWLock(pid);
+                pageMap.put(pid, l);
+            }
+
+            try {
+                HashSet<PageId> trans = transMap.get(tid);
+                if (trans == null) {
+                    throw new DbException("unlock empty tid");
                 }
 
-                mp.put(pid, Permissions.READ_WRITE);
-                return ;
-          } while (false);
-      }
+                if (trans.contains(l.pid) == false) {
+                    throw new DbException("unlock none pid");
+                }
 
-      rl.writeLock().lock();
-      // TODO
-      // do this will race?
-      mp.put(pid, Permissions.READ_WRITE);
-    }
+                if (l.locked == false) {
+                    throw new DbException("unlock nonlocked locks");
+                }
 
-
-    public synchronized void unlock(TransactionId tid, PageId pid) {
-        HashMap<PageId, Permissions> mp = transMap.get(tid);
-        ReentrantReadWriteLock rl = pageMap.get(pid);
-        try {
-            if (mp == null || rl == null) {
-                throw new Exception("null unlock");
+                trans.remove(l.pid);
+                if (!l.isWriteLocked) {
+                    l.readCount --;
+                    if (l.readCount == 0) {
+                        l.locked = false;
+                        pid.notify();
+                    }
+                } else {
+                    l.locked = false;
+                    l.isWriteLocked = false;
+                    pid.notify();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+        }
+    }
 
-            if (mp.get(pid) == null) {
-                throw new Exception("not hold such lock");
+
+    public boolean holdsLock(TransactionId tid, PageId pid) {
+        synchronized(pid) {
+            RWLock l = pageMap.get(pid);
+            if (l == null) {
+                l = new RWLock(pid);
+                pageMap.put(pid, l);
+                return false;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            return transMap.get(tid) != null && transMap.get(tid).contains(l.pid) != false;
         }
-        Permissions perm = mp.get(pid);
-        mp.remove(pid);
-        if (perm == Permissions.READ_WRITE) {
-            rl.writeLock().unlock();
-        } else {
-            rl.readLock().unlock();
-        }
-    }
-
-    public synchronized void unlockAll(TransactionId tid) {
-        HashMap<PageId, Permissions> mp = transMap.get(tid);
-        for(PageId m: mp.keySet()){
-            unlock(tid, m);
-        }
-
-        transMap.remove(tid);
-    }
-
-    public synchronized boolean holdsLock(TransactionId tid, PageId p) {
-        HashMap<PageId, Permissions> mp = transMap.get(tid);
-        if (mp == null)
-            return false;
-        return mp.get(p) != null;
     }
 }
