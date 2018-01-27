@@ -1,14 +1,15 @@
 package simpledb;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collection;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-
 public class LockManager {
-    private Map<TransactionId, HashSet<PageId>> transMap;
+    private Map<TransactionId, Set<PageId>> transMap;
     private Map<PageId, RWLock> pageMap;
 
-    private class RWLock {
+    public class RWLock {
         public int readCount;
         public boolean isWriteLocked;
         public boolean locked;
@@ -23,33 +24,51 @@ public class LockManager {
     }
 
     public LockManager() {
-        transMap = new HashMap<>();
-        pageMap = new HashMap<>();
+        transMap = new ConcurrentHashMap<>();
+        pageMap = new ConcurrentHashMap<>();
+    }
+
+    public Map<PageId, RWLock> getPageLockMap() {
+        return this.pageMap;
+    }
+
+    public Set<PageId> getTransactionPid(TransactionId tid) {
+        return transMap.get(tid);
     }
 
     public void lockRead(TransactionId tid, PageId pid) {
         // we don't need to synchronize on tid,
         // because the same tid will not happnen the same time
-        synchronized(pid) {
-            do {
-                RWLock l = pageMap.get(pid);
-                if (l == null) {
-                    l = new RWLock(pid);
-                    pageMap.put(pid, l);
-                }
 
-                HashSet<PageId> trans = transMap.get(tid);
-                if (trans == null) {
-                    trans = new HashSet<>();
-                    transMap.put(tid, trans);
+        // TODO:
+        //    CAN WE DO BETTER?
+        RWLock l;
+        synchronized(this) {
+            l = pageMap.get(pid);
+            if (l == null) {
+                l = new RWLock(pid);
+                pageMap.put(pid, l);
+            }
+        }
+
+        synchronized(l.pid) {
+            Set<PageId> trans;
+            do {
+                synchronized(tid) {
+                    trans = transMap.get(tid);
+                    if (trans == null) {
+                        trans = Collections.newSetFromMap(new ConcurrentHashMap<PageId, Boolean>());
+                        transMap.put(tid, trans);
+                    }
                 }
 
                 if (l.locked == false) {
                     l.locked = true;
                     l.readCount = 1;
                     l.isWriteLocked = false;
-                    trans.add(l.pid);
-
+                    synchronized(tid) {
+                        trans.add(l.pid);
+                    }
                     return ;
                 }
 
@@ -59,11 +78,13 @@ public class LockManager {
                 } else {
                     if (!l.isWriteLocked) {
                         l.readCount++;
-                        trans.add(l.pid);
+                        synchronized(tid) {
+                            trans.add(l.pid);
+                        }
                         return ;
                     } else {
                         try {
-                            pid.wait();
+                            l.pid.wait();
                         } catch(InterruptedException e) {
                             e.printStackTrace();
                         }
@@ -75,25 +96,33 @@ public class LockManager {
     }
 
     public void lockWrite (TransactionId tid, PageId pid) {
-        synchronized(pid) {
-            do {
-                RWLock l = pageMap.get(pid);
-                if (l == null) {
-                    l = new RWLock(pid);
-                    pageMap.put(pid, l);
-                }
+        RWLock l;
+        synchronized(this) {
+            l = pageMap.get(pid);
+            if (l == null) {
+                l = new RWLock(pid);
+                pageMap.put(pid, l);
+            }
+        }
 
-                HashSet<PageId> trans = transMap.get(tid);
-                if (trans == null) {
-                    trans = new HashSet<>();
-                    transMap.put(tid, trans);
+        synchronized(l.pid) {
+            Set<PageId> trans;
+            do {
+                synchronized(tid) {
+                    trans = transMap.get(tid);
+                    if (trans == null) {
+                        trans = Collections.newSetFromMap(new ConcurrentHashMap<PageId, Boolean>());
+                        transMap.put(tid, trans);
+                    }
                 }
 
                 if (l.locked == false) {
                     l.locked = true;
                     l.readCount = 0;
                     l.isWriteLocked = true;
-                    trans.add(l.pid);
+                    synchronized(tid) {
+                        trans.add(l.pid);
+                    }
                     return ;
                 }
 
@@ -106,7 +135,7 @@ public class LockManager {
                             return ;
                         } else {
                             try {
-                                pid.wait();
+                                l.pid.wait();
                             } catch(InterruptedException e) {
                                 e.printStackTrace();
                             }
@@ -117,7 +146,7 @@ public class LockManager {
                     }
                 } else {
                     try {
-                        pid.wait();
+                        l.pid.wait();
                     } catch(InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -129,15 +158,19 @@ public class LockManager {
 
 
     public void unlock(TransactionId tid, PageId pid) {
-        synchronized(pid) {
-            RWLock l = pageMap.get(pid);
+        RWLock l;
+        synchronized(this) {
+            l = pageMap.get(pid);
             if (l == null) {
                 l = new RWLock(pid);
                 pageMap.put(pid, l);
             }
+        }
 
+        synchronized(l.pid) {
+            Set<PageId> trans;
             try {
-                HashSet<PageId> trans = transMap.get(tid);
+                trans = transMap.get(tid);
                 if (trans == null) {
                     throw new DbException("unlock empty tid");
                 }
@@ -149,18 +182,19 @@ public class LockManager {
                 if (l.locked == false) {
                     throw new DbException("unlock nonlocked locks");
                 }
-
-                trans.remove(l.pid);
+                synchronized(tid) {
+                    trans.remove(l.pid);
+                }
                 if (!l.isWriteLocked) {
                     l.readCount --;
                     if (l.readCount == 0) {
                         l.locked = false;
-                        pid.notify();
+                        l.pid.notify();
                     }
                 } else {
                     l.locked = false;
                     l.isWriteLocked = false;
-                    pid.notify();
+                    l.pid.notify();
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -170,7 +204,7 @@ public class LockManager {
 
 
     public boolean holdsLock(TransactionId tid, PageId pid) {
-        synchronized(pid) {
+        synchronized(this) {
             RWLock l = pageMap.get(pid);
             if (l == null) {
                 l = new RWLock(pid);
@@ -179,5 +213,9 @@ public class LockManager {
             }
             return transMap.get(tid) != null && transMap.get(tid).contains(l.pid) != false;
         }
+    }
+
+    public void cleanTransaction(TransactionId tid) {
+        this.transMap.remove(tid);
     }
 }

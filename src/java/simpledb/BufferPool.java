@@ -29,7 +29,7 @@ public class BufferPool {
     /** Maximum number of pages in this buffer pool */
     private static int numPages;
 
-    public static LockManager manager;
+    public LockManager manager;
 
     /** Page storage */
     private class PageBuffer {
@@ -276,13 +276,14 @@ public class BufferPool {
     public void transactionComplete(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+        transactionComplete(tid, true);
     }
 
     /** Return true if the specified transaction has a lock on the specified page */
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for lab1|lab2
-        return false;
+        return manager.holdsLock(tid, p);
     }
 
     /**
@@ -296,6 +297,25 @@ public class BufferPool {
         throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
+
+        // TODO:
+        //   how should we deal with rangelock or inserted file in HeapFile.java
+        Set<PageId> pids = manager.getTransactionPid(tid);
+        if (pids == null) {
+            return ;
+        }
+        synchronized(tid) {
+            for (PageId pid: pids) {
+                manager.unlock(tid, pid);
+                if (commit) {
+                    this.flushPage(pid);
+                } else {
+                    this.discardPage(pid);
+                }
+            }
+
+            manager.cleanTransaction(tid);
+        }
     }
 
     /**
@@ -445,7 +465,7 @@ public class BufferPool {
 
     /** Write all pages of the specified transaction to disk.
      */
-    public synchronized  void flushPages(TransactionId tid) throws IOException {
+    public synchronized void flushPages(TransactionId tid) throws IOException {
         // some code goes here
         // not necessary for lab1|lab2
     }
@@ -454,20 +474,30 @@ public class BufferPool {
      * Discards a page from the buffer pool.
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
-    private synchronized  void evictPage() throws DbException {
+    private synchronized void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
-        PageBuffer pb = buffer.deleteLast();
-        if (pb.getPage().isDirty() != null) {
-            HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
-            try {
-                h.writePage(pb.getPage());
-            } catch(IOException e) {
-                e.printStackTrace();
-            }
-            pb.getPage().markDirty(false, null);
-        }
-        empty.insertWithoutSetIntoMap(pb);
-    }
+        int tryTime = numPages;
+        while (tryTime > 0) {
+            tryTime --;
+            PageBuffer pb = buffer.deleteLast();
 
+            if (pb.getPage().isDirty() != null) {
+                // HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pb.getPage().getId().getTableId());
+                // try {
+                //     h.writePage(pb.getPage());
+                // } catch(IOException e) {
+                //     e.printStackTrace();
+                // }
+                // pb.getPage().markDirty(false, null);
+
+                buffer.insertFirst(pb);
+                continue;
+            }
+            empty.insertWithoutSetIntoMap(pb);
+            return;
+        }
+
+        throw new DbException("No enough place for NO STEAL");
+    }
 }
