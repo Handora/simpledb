@@ -113,7 +113,9 @@ public class TableStats {
         // TODO
         // How to deal with transaction id
         this.nTuples = 0;
-        DbFileIterator it = this.file.iterator(null);
+        Transaction txn = new Transaction();
+        txn.start();
+        DbFileIterator it = this.file.iterator(txn.getId());
         try {
             it.open();
             while (it.hasNext()) {
@@ -186,10 +188,11 @@ public class TableStats {
                 }
             }
             it.close();
+
+            txn.transactionComplete(false);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
     public int getDistinctNum(int i) {

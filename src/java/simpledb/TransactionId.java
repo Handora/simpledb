@@ -10,7 +10,7 @@ public class TransactionId implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    static AtomicLong counter = new AtomicLong(0);
+    static AtomicLong counter = new AtomicLong(-1);
     final long myid;
 
     public TransactionId() {

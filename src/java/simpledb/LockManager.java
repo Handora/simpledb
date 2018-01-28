@@ -82,6 +82,8 @@ public class LockManager {
                 return ;
             }
 
+
+
             boolean isOwned = trans.contains(l.pid);
             if (isOwned) {
                 l.lock.unlock();
@@ -165,6 +167,7 @@ public class LockManager {
                         continue;
                     }
                 } else {
+                    l.lock.unlock();
                     return ;
                 }
             } else {
