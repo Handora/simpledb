@@ -123,7 +123,7 @@ public class TransactionTest extends SimpleDbTestBase {
                         q2.start();
                         q2.next();
                         q2.close();
-
+                        // assert false;
 
                         // set up a Set with a tuple that is one higher than the old one.
                         HashSet<Tuple> hs = new HashSet<Tuple>();
@@ -214,7 +214,7 @@ public class TransactionTest extends SimpleDbTestBase {
 
     @Test public void testSingleThread()
             throws IOException, DbException, TransactionAbortedException {
-        // validateTransactions(1);
+        validateTransactions(1);
     }
 
     @Test public void testTwoThreads()
@@ -224,12 +224,12 @@ public class TransactionTest extends SimpleDbTestBase {
 
     @Test public void testFiveThreads()
             throws IOException, DbException, TransactionAbortedException {
-        // validateTransactions(5);
+        validateTransactions(5);
     }
 
     @Test public void testTenThreads()
     throws IOException, DbException, TransactionAbortedException {
-        // validateTransactions(10);
+        validateTransactions(10);
         // assertEquals(1, 1);
     }
 

@@ -2,14 +2,13 @@ package simpledb;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Collection;
 import java.util.concurrent.locks.*;
 import java.util.concurrent.TimeUnit;
-
 
 public class LockManager {
     private Map<TransactionId, Set<PageId>> transMap;
     private Map<PageId, RWLock> pageMap;
+    private Set<TransactionId> deadList;
     private int DEFAULT_TIMEOUT = 1;
 
     public class RWLock {
@@ -33,6 +32,22 @@ public class LockManager {
     public LockManager() {
         transMap = new ConcurrentHashMap<>();
         pageMap = new ConcurrentHashMap<>();
+        deadList = new HashSet<>();
+    }
+
+    // TODO
+    //   can we do this better??
+    //   is there some nice notify way to kill the pid?
+    private boolean checkForDeath(TransactionId tid) {
+        if (this.deadList.contains(tid)) {
+            this.deadList.remove(tid);
+            return true;
+        }
+        return false;
+    }
+
+    private void setDeath(TransactionId tid) {
+        this.deadList.add(tid);
     }
 
     public Map<PageId, RWLock> getPageLockMap() {
@@ -47,7 +62,6 @@ public class LockManager {
           throws TransactionAbortedException {
         // we don't need to synchronize on tid,
         // because the same tid will not happnen the same time
-
         // TODO:
         //    CAN WE DO BETTER?
         RWLock l;
@@ -56,6 +70,10 @@ public class LockManager {
             if (l == null) {
                 l = new RWLock(pid);
                 pageMap.put(pid, l);
+            }
+            if (checkForDeath(tid)) {
+                l.lock.unlock();
+                throw new TransactionAbortedException();
             }
         }
 
@@ -82,8 +100,6 @@ public class LockManager {
                 return ;
             }
 
-
-
             boolean isOwned = trans.contains(l.pid);
             if (isOwned) {
                 l.lock.unlock();
@@ -103,6 +119,12 @@ public class LockManager {
                             l.lock.unlock();
                             throw new TransactionAbortedException();
                         }
+                        synchronized(this) {
+                            if (checkForDeath(tid)) {
+                                l.lock.unlock();
+                                throw new TransactionAbortedException();
+                            }
+                        }
                     } catch(InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -121,8 +143,10 @@ public class LockManager {
                 l = new RWLock(pid);
                 pageMap.put(pid, l);
             }
+            if (checkForDeath(tid)) {
+                throw new TransactionAbortedException();
+            }
         }
-
 
         l.lock.lock();
         Set<PageId> trans;
@@ -158,8 +182,25 @@ public class LockManager {
                         try {
                             boolean ok = l.condition.await(DEFAULT_TIMEOUT, TimeUnit.SECONDS);
                             if (!ok) {
-                                l.lock.unlock();
-                                throw new TransactionAbortedException();
+                                synchronized(this) {
+                                    if (checkForDeath(tid)) {
+                                        l.lock.unlock();
+                                        throw new TransactionAbortedException();
+                                    }
+
+                                    for (Map.Entry<TransactionId, Set<PageId>> e: this.transMap.entrySet()) {
+                                        if (e.getValue().contains(l.pid) && !e.getKey().equals(tid)) {
+                                            this.setDeath(e.getKey());
+                                            e.getValue().remove(l.pid);
+                                        }
+                                    }
+
+                                    l.readCount = 0;
+                                    l.isWriteLocked = true;
+                                    l.locked = true;
+                                    l.lock.unlock();
+                                    return ;
+                                }
                             }
                         } catch(InterruptedException e) {
                             e.printStackTrace();
@@ -174,6 +215,10 @@ public class LockManager {
                 try {
                     boolean ok = l.condition.await(DEFAULT_TIMEOUT, TimeUnit.SECONDS);
                     if (!ok) {
+                        l.lock.unlock();
+                        throw new TransactionAbortedException();
+                    }
+                    if (checkForDeath(tid)) {
                         l.lock.unlock();
                         throw new TransactionAbortedException();
                     }
@@ -194,6 +239,9 @@ public class LockManager {
             if (l == null) {
                 l = new RWLock(pid);
                 pageMap.put(pid, l);
+            }
+            if (checkForDeath(tid)) {
+                this.deadList.remove(tid);
             }
         }
 
