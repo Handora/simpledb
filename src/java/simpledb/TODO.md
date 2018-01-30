@@ -1,10 +1,11 @@
 # TODO
 
-1. Add code to perform more advanced join cardinality estimation. Rather than using simple heuristics to estimate join cardinality, devise a more sophisticated algorithm.
-2. One option is to use joint histograms between every pair of attributes a and b in every pair of tables t1 and t2. The idea is to create buckets of a, and for each bucket A of a, create a histogram of b values that co-occur with a values in A.
-3. Another way to estimate the cardinality of a join is to assume that each value in the smaller table has a matching value in the larger table. Then the formula for the join selectivity would be: 1/(Max(num-distinct(t1, column1), num-distinct(t2, column2))). Here, column1 and column2 are the join attributes. The cardinality of the join is then the product of the cardinalities of t1 and t2 times the selectivity. 
-4. Improved subset iterator. Our implementation of enumerateSubsets is quite inefficient, because it creates a large number of Java objects on each invocation. A better approach would be to implement an iterator that, for example, returns a BitSet that specifies the elements in the joins vector that should be accessed on each iteration. In this bonus exercise, you would improve the performance of enumerateSubsets so that your system could perform query optimization on plans with 20 or more joins (currently such plans takes minutes or hours to compute).
-5. A cost model that accounts for caching. The methods to estimate scan and join cost do not account for caching in the buffer pool. You should extend the cost model to account for caching effects. This is tricky because multiple joins are running simultaneously due to the iterator model, and so it may be hard to predict how much memory each will have access to using the simple buffer pool we have implemented in previous labs.
-6. Improved join algorithms and algorithm selection. Our current cost estimation and join operator selection algorithms (see instantiateJoin() in JoinOptimizer.java) only consider nested loops joins. Extend these methods to use one or more additional join algorithms (for example, some form of in memory hashing using a HashMap).
-7. Bushy plans. Improve the provided orderJoins() and other helper methods to generate bushy joins. Our query plan generation and visualization algorithms are perfectly capable of handling bushy plans; for example, if orderJoins() returns the vector (t1 join t2 ; t3 join t4 ; t2 join t3), this will correspond to a bushy plan with the (t2 join t3) node at the top.
-8. Do Grace hash joins!
+## lab 3
+1. Add code to perform more advanced join cardinality estimation. Rather than using simple heuristics to estimate join cardinality, devise a more sophisticated algorithm. One option is to use joint histograms between every pair of attributes a and b in every pair of tables t1 and t2. The idea is to create buckets of a, and for each bucket A of a, create a histogram of b values that co-occur with a values in A.
+2. Bushy plans. Improve the provided orderJoins() and other helper methods to generate bushy joins. Our query plan generation and visualization algorithms are perfectly capable of handling bushy plans; for example, if orderJoins() returns the vector (t1 join t2 ; t3 join t4 ; t2 join t3), this will correspond to a bushy plan with the (t2 join t3) node at the top.
+3. Do Grace hash joins!
+
+## lab 4
+1. Locking granularity: page-level versus tuple-level
+2. Deadlock detection: timeouts versus dependency graphs
+3. Deadlock resolution: aborting yourself versus aborting others

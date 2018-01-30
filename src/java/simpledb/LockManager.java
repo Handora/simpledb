@@ -4,7 +4,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.*;
 import java.util.concurrent.TimeUnit;
-
 public class LockManager {
     private Map<TransactionId, Set<PageId>> transMap;
     private Map<PageId, RWLock> pageMap;
