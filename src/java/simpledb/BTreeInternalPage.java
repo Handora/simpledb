@@ -6,7 +6,7 @@ import java.io.*;
 import simpledb.Predicate.Op;
 
 /**
- * Each instance of BTreeInternalPage stores data for one page of a BTreeFile and 
+ * Each instance of BTreeInternalPage stores data for one page of a BTreeFile and
  * implements the Page interface that is used by BufferPool.
  *
  * @see BTreeFile
@@ -18,7 +18,7 @@ public class BTreeInternalPage extends BTreePage {
 	private final Field keys[];
 	private final int children[];
 	private final int numSlots;
-	
+
 	private int childCategory; // either leaf or internal
 
 	public void checkRep(Field lowerBound, Field upperBound, boolean checkOccupancy, int depth) {
@@ -40,18 +40,18 @@ public class BTreeInternalPage extends BTreePage {
 			assert (getNumEntries() >= getMaxEntries() / 2);
 		}
 	}
-	
+
 	/**
 	 * Create a BTreeInternalPage from a set of bytes of data read from disk.
 	 * The format of a BTreeInternalPage is a set of header bytes indicating
 	 * the slots of the page that are in use, some number of entry slots, and extra
-	 * bytes for the parent pointer, one extra child pointer (a node with m entries 
-	 * has m+1 pointers to children), and the category of all child pages (either 
+	 * bytes for the parent pointer, one extra child pointer (a node with m entries
+	 * has m+1 pointers to children), and the category of all child pages (either
 	 * leaf or internal).
 	 *  Specifically, the number of entries is equal to: <p>
 	 *          floor((BufferPool.getPageSize()*8 - extra bytes*8) / (entry size * 8 + 1))
 	 * <p> where entry size is the size of entries in this index node
-	 * (key + child pointer), which can be determined via the key field and 
+	 * (key + child pointer), which can be determined via the key field and
 	 * {@link Catalog#getTupleDesc}.
 	 * The number of 8-bit header words is equal to:
 	 * <p>
@@ -60,7 +60,7 @@ public class BTreeInternalPage extends BTreePage {
 	 * @see Database#getCatalog
 	 * @see Catalog#getTupleDesc
 	 * @see BufferPool#getPageSize()
-	 * 
+	 *
 	 * @param id - the id of this page
 	 * @param data - the raw data of this page
 	 * @param key - the field which the index is keyed on
@@ -111,15 +111,15 @@ public class BTreeInternalPage extends BTreePage {
 		setBeforeImage();
 	}
 
-	/** 
+	/**
 	 * Retrieve the maximum number of entries this page can hold. (The number of keys)
  	 */
-	public int getMaxEntries() {        
+	public int getMaxEntries() {
 		int keySize = td.getFieldType(keyField).getLen();
 		int bitsPerEntryIncludingHeader = keySize * 8 + INDEX_SIZE * 8 + 1;
-		// extraBits are: one parent pointer, 1 byte for child page category, 
+		// extraBits are: one parent pointer, 1 byte for child page category,
 		// one extra child pointer (node with m entries has m+1 pointers to children), 1 bit for extra header
-		int extraBits = 2 * INDEX_SIZE * 8 + 8 + 1; 
+		int extraBits = 2 * INDEX_SIZE * 8 + 8 + 1;
 		int entriesPerPage = (BufferPool.getPageSize()*8 - extraBits) / bitsPerEntryIncludingHeader; //round down
 		return entriesPerPage;
 	}
@@ -128,7 +128,7 @@ public class BTreeInternalPage extends BTreePage {
 	 * Computes the number of bytes in the header of a B+ internal page with each entry occupying entrySize bytes
 	 * @return the number of bytes in the header
 	 */
-	private int getHeaderSize() {        
+	private int getHeaderSize() {
 		int slotsPerPage = getMaxEntries() + 1;
 		int hb = (slotsPerPage / 8);
 		if (hb * 8 < slotsPerPage) hb++;
@@ -315,8 +315,8 @@ public class BTreeInternalPage extends BTreePage {
 		}
 
 		// padding
-		int zerolen = BufferPool.getPageSize() - (INDEX_SIZE + 1 + header.length + 
-				td.getFieldType(keyField).getLen() * (keys.length - 1) + INDEX_SIZE * children.length); 
+		int zerolen = BufferPool.getPageSize() - (INDEX_SIZE + 1 + header.length +
+				td.getFieldType(keyField).getLen() * (keys.length - 1) + INDEX_SIZE * children.length);
 		byte[] zeroes = new byte[zerolen];
 		try {
 			dos.write(zeroes, 0, zerolen);
@@ -335,8 +335,8 @@ public class BTreeInternalPage extends BTreePage {
 
 	/**
 	 * Delete the specified entry (key + 1 child pointer) from the page. The recordId
-	 * is used to find the specified entry, so it must not be null. After deletion, the 
-	 * entry's recordId should be set to null to reflect that it is no longer stored on 
+	 * is used to find the specified entry, so it must not be null. After deletion, the
+	 * entry's recordId should be set to null to reflect that it is no longer stored on
 	 * any page.
 	 * @throws DbException if this entry is not on this page, or entry slot is
 	 *         already empty.
@@ -361,7 +361,7 @@ public class BTreeInternalPage extends BTreePage {
 					children[i] = children[rid.getTupleNumber()];
 					markSlotUsed(rid.getTupleNumber(), false);
 					break;
-				}	
+				}
 			}
 		}
 		e.setRecordId(null);
@@ -369,8 +369,8 @@ public class BTreeInternalPage extends BTreePage {
 
 	/**
 	 * Delete the specified entry (key + right child pointer) from the page. The recordId
-	 * is used to find the specified entry, so it must not be null. After deletion, the 
-	 * entry's recordId should be set to null to reflect that it is no longer stored on 
+	 * is used to find the specified entry, so it must not be null. After deletion, the
+	 * entry's recordId should be set to null to reflect that it is no longer stored on
 	 * any page.
 	 * @throws DbException if this entry is not on this page, or entry slot is
 	 *         already empty.
@@ -379,11 +379,11 @@ public class BTreeInternalPage extends BTreePage {
 	public void deleteKeyAndRightChild(BTreeEntry e) throws DbException {
 		deleteEntry(e, true);
 	}
-	
+
 	/**
 	 * Delete the specified entry (key + left child pointer) from the page. The recordId
-	 * is used to find the specified entry, so it must not be null. After deletion, the 
-	 * entry's recordId should be set to null to reflect that it is no longer stored on 
+	 * is used to find the specified entry, so it must not be null. After deletion, the
+	 * entry's recordId should be set to null to reflect that it is no longer stored on
 	 * any page.
 	 * @throws DbException if this entry is not on this page, or entry slot is
 	 *         already empty.
@@ -392,13 +392,13 @@ public class BTreeInternalPage extends BTreePage {
 	public void deleteKeyAndLeftChild(BTreeEntry e) throws DbException {
 		deleteEntry(e, false);
 	}
-	
+
 	/**
-	 * Update the key and/or child pointers of an entry at the location specified by its 
+	 * Update the key and/or child pointers of an entry at the location specified by its
 	 * record id.
 	 * @param e - the entry with updated key and/or child pointers
 	 * @throws DbException if this entry is not on this page, entry slot is
-	 *         already empty, or updating this key would put the entry out of 
+	 *         already empty, or updating this key would put the entry out of
 	 *         order on the page
 	 */
 	public void updateEntry(BTreeEntry e) throws DbException {
@@ -409,7 +409,7 @@ public class BTreeInternalPage extends BTreePage {
 			throw new DbException("tried to update entry on invalid page or table");
 		if (!isSlotUsed(rid.getTupleNumber()))
 			throw new DbException("tried to update null entry.");
-		
+
 		for(int i = rid.getTupleNumber() + 1; i < numSlots; i++) {
 			if(isSlotUsed(i)) {
 				if(keys[i].compare(Op.LESS_THAN, e.getKey())) {
@@ -417,7 +417,7 @@ public class BTreeInternalPage extends BTreePage {
 							" HINT: updated key must be less than or equal to keys on the right");
 				}
 				break;
-			}	
+			}
 		}
 		for(int i = rid.getTupleNumber() - 1; i >= 0; i--) {
 			if(isSlotUsed(i)) {
@@ -427,14 +427,14 @@ public class BTreeInternalPage extends BTreePage {
 				}
 				children[i] = e.getLeftChild().getPageNumber();
 				break;
-			}	
+			}
 		}
 		children[rid.getTupleNumber()] = e.getRightChild().getPageNumber();
 		keys[rid.getTupleNumber()] = e.getKey();
 	}
 
 	/**
-	 * Adds the specified entry to the page; the entry's recordId should be updated to 
+	 * Adds the specified entry to the page; the entry's recordId should be updated to
 	 * reflect that it is now stored on this page.
 	 * @throws DbException if the page is full (no empty slots) or key field type,
 	 *         table id, or child page category is a mismatch, or the entry is invalid
@@ -477,7 +477,7 @@ public class BTreeInternalPage extends BTreePage {
 		}
 
 		if (emptySlot == -1)
-			throw new DbException("called insertEntry on page with no empty slots.");        
+			throw new DbException("called insertEntry on page with no empty slots.");
 
 		// find the child pointer matching the left or right child in this entry
 		int lessOrEqKey = -1;
@@ -485,7 +485,7 @@ public class BTreeInternalPage extends BTreePage {
 			if(isSlotUsed(i)) {
 				if(children[i] == e.getLeftChild().getPageNumber() || children[i] == e.getRightChild().getPageNumber()) {
 					if(i > 0 && keys[i].compare(Op.GREATER_THAN, e.getKey())) {
-						throw new DbException("attempt to insert invalid entry with left child " + 
+						throw new DbException("attempt to insert invalid entry with left child " +
 								e.getLeftChild().getPageNumber() + ", right child " +
 								e.getRightChild().getPageNumber() + " and key " + e.getKey() +
 								" HINT: one of these children must match an existing child on the page" +
@@ -500,7 +500,7 @@ public class BTreeInternalPage extends BTreePage {
 				else if(lessOrEqKey != -1) {
 					// validate that the next key is greater than or equal to the one we are inserting
 					if(keys[i].compare(Op.LESS_THAN, e.getKey())) {
-						throw new DbException("attempt to insert invalid entry with left child " + 
+						throw new DbException("attempt to insert invalid entry with left child " +
 								e.getLeftChild().getPageNumber() + ", right child " +
 								e.getRightChild().getPageNumber() + " and key " + e.getKey() +
 								" HINT: one of these children must match an existing child on the page" +
@@ -513,7 +513,7 @@ public class BTreeInternalPage extends BTreePage {
 		}
 
 		if(lessOrEqKey == -1) {
-			throw new DbException("attempt to insert invalid entry with left child " + 
+			throw new DbException("attempt to insert invalid entry with left child " +
 					e.getLeftChild().getPageNumber() + ", right child " +
 					e.getRightChild().getPageNumber() + " and key " + e.getKey() +
 					" HINT: one of these children must match an existing child on the page" +
@@ -564,7 +564,7 @@ public class BTreeInternalPage extends BTreePage {
 	public int getNumEntries() {
 		return numSlots - getNumEmptySlots() - 1;
 	}
-	
+
 	/**
 	 * Returns the number of empty slots on this page.
 	 */
@@ -608,7 +608,7 @@ public class BTreeInternalPage extends BTreePage {
 	public Iterator<BTreeEntry> iterator() {
 		return new BTreeInternalPageIterator(this);
 	}
-	
+
 	/**
 	 * @return a reverse iterator over all entries on this page (calling remove on this iterator throws an UnsupportedOperationException)
 	 * (note that this iterator shouldn't return entries in empty slots!)

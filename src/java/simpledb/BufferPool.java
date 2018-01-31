@@ -245,7 +245,7 @@ public class BufferPool {
                 }
 
                 pb = empty.deleteLastWithoutSetOutofMap();
-                HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+                DbFile hf = Database.getCatalog().getDatabaseFile(pid.getTableId());
                 pb.setPage(hf.readPage(pid));
                 buffer.insertFirst(pb);
                 return pb.getPage();
