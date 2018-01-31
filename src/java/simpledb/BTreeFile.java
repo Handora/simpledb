@@ -152,8 +152,7 @@ public class BTreeFile implements DbFile {
 		if(id.pgcateg() == BTreePageId.ROOT_PTR) {
 			rf.write(data);
 			rf.close();
-		}
-		else {
+		} else {
 			rf.seek(BTreeRootPtrPage.getPageSize() + (page.getId().getPageNumber()-1) * BufferPool.getPageSize());
 			rf.write(data);
 			rf.close();
@@ -202,10 +201,8 @@ public class BTreeFile implements DbFile {
 				LockManager manager = Database.getBufferPool().manager;
 
 				while (pid.pgcateg() == BTreePageId.INTERNAL) {
-						BTreeInternalPage bp = (BTreeInternalPage)getPage(tid, dirtypages, pid, perm);
+						BTreeInternalPage bp = (BTreeInternalPage)getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
 						Iterator<BTreeEntry> it = bp.iterator();
-						manager.lockRead(tid, pid);
-						// smallest number such that V <= C.K
 
 						BTreeEntry te = null;
 						while (it.hasNext()) {
@@ -214,10 +211,13 @@ public class BTreeFile implements DbFile {
 										te = e;
 										break;
 								}
-								if (f.compare(Predicate.Op.LESS_THAN_OR_EQ, e.getKey())) {
+								if (f.compare(Predicate.Op.GREATER_THAN, e.getKey())) {
 										te = e;
+								} else if (f.compare(Predicate.Op.EQUALS, e.getKey())) {
+										te = e;
+										break;
 								} else {
-										if (!it.hasNext()) {
+										if (!it.hasNext() || te == null) {
 												te = e;
 										}
 										break;
@@ -228,7 +228,7 @@ public class BTreeFile implements DbFile {
 								throw new DbException("Internal logical error or zero size iterator");
 						} else if (f == null) {
 								pid = te.getLeftChild();
-						} else if (f.compare(Predicate.Op.GREATER_THAN_OR_EQ, te.getKey())) {
+						} else if (f.compare(Predicate.Op.GREATER_THAN, te.getKey())) {
 							 	pid = te.getRightChild();
 						} else {
 								pid = te.getLeftChild();
@@ -239,13 +239,7 @@ public class BTreeFile implements DbFile {
 						throw new DbException("find wrong type page(should be leaf)");
 				}
 
-				if (perm == Permissions.READ_ONLY) {
-						manager.lockRead(tid, pid);
-				} else {
-						manager.lockWrite(tid, pid);
-				}
-
-				BTreeLeafPage bp = (BTreeLeafPage)getPage(tid, dirtypages, pid, perm);
+				BTreeLeafPage bp = (BTreeLeafPage)this.getPage(tid, dirtypages, pid, perm);
 				return bp;
 	}
 
@@ -298,8 +292,48 @@ public class BTreeFile implements DbFile {
 		// the new entry.  getParentWithEmtpySlots() will be useful here.  Don't forget to update
 		// the sibling pointers of all the affected leaf pages.  Return the page into which a
 		// tuple with the given key field should be inserted.
-        return null;
+				BTreeLeafPage newLeaf = (BTreeLeafPage) getEmptyPage(tid, dirtypages, BTreePageId.LEAF);
+				int maxTuples = page.getMaxTuples();
+				int rightTuples = maxTuples / 2;
+				int i = 0;
+				Iterator<Tuple> it = page.reverseIterator();
+				Tuple trueTuple = null;
+				while (i < rightTuples) {
+						Tuple t = it.next();
+						page.deleteTuple(t);
+						newLeaf.insertTuple(t);
+						i++;
+						trueTuple = t;
+				}
 
+				if (trueTuple == null) {
+						throw new DbException("end up with empty page");
+				}
+
+				BTreeLeafPage choosen = page;
+
+				if (field.compare(Predicate.Op.GREATER_THAN, trueTuple.getField(this.keyField))) {
+						choosen = newLeaf;
+				}
+
+				BTreeLeafPage sibling = null;
+				if (page.getRightSiblingId() == null) {
+						sibling = null;
+				} else {
+						sibling = (BTreeLeafPage)getPage(tid, dirtypages, page.getRightSiblingId(), Permissions.READ_WRITE);
+						sibling.setLeftSiblingId(newLeaf.getId());
+				}
+
+				newLeaf.setRightSiblingId(page.getRightSiblingId());
+				newLeaf.setLeftSiblingId(page.getId());
+				page.setRightSiblingId(newLeaf.getId());
+
+				BTreeInternalPage parent = this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), trueTuple.getField(this.keyField));
+
+				parent.insertEntry(new BTreeEntry(trueTuple.getField(this.keyField), page.getId(), newLeaf.getId()));
+
+
+        return choosen;
 	}
 
 	/**
@@ -336,7 +370,34 @@ public class BTreeFile implements DbFile {
 		// the parent pointers of all the children moving to the new page.  updateParentPointers()
 		// will be useful here.  Return the page into which an entry with the given key field
 		// should be inserted.
-		return null;
+			BTreeInternalPage newInternal = (BTreeInternalPage)getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+			int maxEntry = page.getMaxEntries();
+			int rightEntries = maxEntry / 2;
+			int i = 0;
+			Iterator<BTreeEntry> it = page.reverseIterator();
+
+			while (i < rightEntries) {
+					BTreeEntry e = it.next();
+					page.deleteKeyAndRightChild(e);
+					newInternal.insertEntry(e);
+					i++;
+			}
+
+			BTreeEntry push = it.next();
+			page.deleteKeyAndRightChild(push);
+			BTreeInternalPage choosen = page;
+
+			if (field.compare(Predicate.Op.GREATER_THAN, push.getKey())) {
+					choosen = newInternal;
+			}
+
+			BTreeInternalPage parent = this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), push.getKey());
+			parent.insertEntry(new BTreeEntry(push.getKey(), page.getId(), newInternal.getId()));
+			updateParentPointers(tid, dirtypages, parent);
+//			updateParentPointers(tid, dirtypages, page);
+			updateParentPointers(tid, dirtypages, newInternal);
+
+      return choosen;
 	}
 
 	/**

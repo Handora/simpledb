@@ -337,7 +337,7 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(tableId);
+        DbFile hf = Database.getCatalog().getDatabaseFile(tableId);
         ArrayList<Page> ar = hf.insertTuple(tid, t);
         for (Page p: ar) {
             synchronized(this) {
@@ -378,7 +378,7 @@ public class BufferPool {
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
         // not necessary for lab1
-        HeapFile hf = (HeapFile)Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        DbFile hf = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
         ArrayList<Page> ar = hf.deleteTuple(tid, t);
         for (Page p: ar) {
             synchronized(this) {
@@ -413,7 +413,7 @@ public class BufferPool {
         ArrayList<Page> a = buffer.getBufferPages();
         for (Page v: a) {
             if (v.isDirty() != null) {
-                HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(v.getId().getTableId());
+                DbFile h = Database.getCatalog().getDatabaseFile(v.getId().getTableId());
                 h.writePage(v);
                 v.markDirty(false, null);
             }
@@ -456,7 +456,7 @@ public class BufferPool {
             return ;
         } else {
             if (pb.getPage().isDirty() != null) {
-                HeapFile h = (HeapFile)Database.getCatalog().getDatabaseFile(pid.getTableId());
+                DbFile h = Database.getCatalog().getDatabaseFile(pid.getTableId());
                 h.writePage(pb.getPage());
                 pb.getPage().markDirty(false, null);
             }
