@@ -390,7 +390,6 @@ public class BTreeFile implements DbFile {
 					choosen = newInternal;
 			}
 
-			updateParentPointers(tid, dirtypages, page);
 			updateParentPointers(tid, dirtypages, newInternal);
 			BTreeInternalPage parent = this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), push.getKey());
 

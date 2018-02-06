@@ -17,7 +17,6 @@ public class HeapFile implements DbFile {
 
     private File file;
     private TupleDesc schema;
-    private int size;
 
     public class HeapIterator extends AbstractDbFileIterator {
         int pid;
@@ -94,8 +93,6 @@ public class HeapFile implements DbFile {
         // some code goes here
         this.file = f;
         this.schema = td;
-        this.size = (int)f.length() / BufferPool.getPageSize()
-                + ((int)f.length() % BufferPool.getPageSize() == 0 ? 0:1);
     }
 
     /**
@@ -171,7 +168,8 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return this.size;
+        return (int)this.file.length() / BufferPool.getPageSize()
+                + ((int)this.file.length() % BufferPool.getPageSize() == 0 ? 0:1);
     }
 
     // see DbFile.java for javadocs
@@ -199,16 +197,8 @@ public class HeapFile implements DbFile {
 
         HeapPage p = new HeapPage(new HeapPageId(getId(), i), HeapPage.createEmptyPageData());
         ArrayList<Page> a = new ArrayList<>();
+        this.writePage(p);
         p.insertTuple(t);
-        this.size++;
-        // TODO:
-        // Do i need write it out?
-        // Or should we change it's size only?
-
-        // OutputStream opStream = new FileOutputStream(file, true);
-        // opStream.write(p.getPageData());
-        // opStream.flush();
-        // opStream.close();
         a.add(p);
         return a;
     }

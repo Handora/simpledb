@@ -128,6 +128,28 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 		}
 		assertEquals(1200, count);
 	}
+	@Test public void addDuplicateTuples2() throws Exception {
+		// create an empty B+ tree file keyed on the second field of a 2-field tuple
+		File emptyFile = File.createTempFile("empty2", ".dat");
+		emptyFile.deleteOnExit();
+		Database.reset();
+		BTreeFile empty = BTreeUtility.createEmptyBTreeFile(emptyFile.getAbsolutePath(), 2, 1);
+
+		Tuple tup = null;
+
+		BTreeChecker.checkRep(empty, tid, new HashMap<PageId, Page>(), true);
+
+		// add a bunch of identical tuples
+		for (int i = 0; i < 5; ++i) {
+			for(int j = 0; j < 1200; ++j) {
+				tup = BTreeUtility.getBTreeTuple(i, 2);
+				empty.insertTuple(tid, tup);
+				// BTreeChecker.checkRep(empty, tid, new HashMap<PageId, Page>(), true);
+			}
+		}
+
+		BTreeChecker.checkRep(empty, tid, new HashMap<PageId, Page>(), true);
+	}
 
 	@Test
 	public void testSplitLeafPage() throws Exception {
