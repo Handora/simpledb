@@ -71,7 +71,8 @@ public class LockManager {
                 pageMap.put(pid, l);
             }
             if (checkForDeath(tid)) {
-                l.lock.unlock();
+                if (((ReentrantLock)(l.lock)).isLocked())
+                    l.lock.unlock();
                 throw new TransactionAbortedException();
             }
         }
@@ -95,13 +96,15 @@ public class LockManager {
                 synchronized(tid) {
                     trans.add(l.pid);
                 }
-                l.lock.unlock();
+                if (((ReentrantLock)(l.lock)).isLocked())
+                    l.lock.unlock();
                 return ;
             }
 
             boolean isOwned = trans.contains(l.pid);
             if (isOwned) {
-                l.lock.unlock();
+                if (((ReentrantLock)(l.lock)).isLocked())
+                    l.lock.unlock();
                 return ;
             } else {
                 if (!l.isWriteLocked) {
@@ -109,18 +112,21 @@ public class LockManager {
                     synchronized(tid) {
                         trans.add(l.pid);
                     }
-                    l.lock.unlock();
+                    if (((ReentrantLock)(l.lock)).isLocked())
+                        l.lock.unlock();
                     return ;
                 } else {
                     try {
                         boolean ok = l.condition.await(DEFAULT_TIMEOUT, TimeUnit.SECONDS);
                         if (!ok) {
-                            l.lock.unlock();
+                            if (((ReentrantLock)(l.lock)).isLocked())
+                                l.lock.unlock();
                             throw new TransactionAbortedException();
                         }
                         synchronized(this) {
                             if (checkForDeath(tid)) {
-                                l.lock.unlock();
+                                if (((ReentrantLock)(l.lock)).isLocked())
+                                    l.lock.unlock();
                                 throw new TransactionAbortedException();
                             }
                         }
@@ -165,7 +171,8 @@ public class LockManager {
                 synchronized(tid) {
                     trans.add(l.pid);
                 }
-                l.lock.unlock();
+                if (((ReentrantLock)(l.lock)).isLocked())
+                    l.lock.unlock();
                 return ;
             }
 
@@ -175,7 +182,8 @@ public class LockManager {
                     if (l.readCount == 1) {
                         l.readCount = 0;
                         l.isWriteLocked = true;
-                        l.lock.unlock();
+                        if (((ReentrantLock)(l.lock)).isLocked())
+                            l.lock.unlock();
                         return ;
                     } else {
                         try {
@@ -183,7 +191,8 @@ public class LockManager {
                             if (!ok) {
                                 synchronized(this) {
                                     if (checkForDeath(tid)) {
-                                        l.lock.unlock();
+                                        if (((ReentrantLock)(l.lock)).isLocked())
+                                            l.lock.unlock();
                                         throw new TransactionAbortedException();
                                     }
 
@@ -197,7 +206,8 @@ public class LockManager {
                                     l.readCount = 0;
                                     l.isWriteLocked = true;
                                     l.locked = true;
-                                    l.lock.unlock();
+                                    if (((ReentrantLock)(l.lock)).isLocked())
+                                        l.lock.unlock();
                                     return ;
                                 }
                             }
@@ -207,18 +217,21 @@ public class LockManager {
                         continue;
                     }
                 } else {
-                    l.lock.unlock();
+                    if (((ReentrantLock)(l.lock)).isLocked())
+                        l.lock.unlock();
                     return ;
                 }
             } else {
                 try {
                     boolean ok = l.condition.await(DEFAULT_TIMEOUT, TimeUnit.SECONDS);
                     if (!ok) {
-                        l.lock.unlock();
+                        if (((ReentrantLock)(l.lock)).isLocked())
+                            l.lock.unlock();
                         throw new TransactionAbortedException();
                     }
                     if (checkForDeath(tid)) {
-                        l.lock.unlock();
+                        if (((ReentrantLock)(l.lock)).isLocked())
+                            l.lock.unlock();
                         throw new TransactionAbortedException();
                     }
                 } catch(InterruptedException e) {
@@ -273,7 +286,8 @@ public class LockManager {
                 l.isWriteLocked = false;
                 l.condition.signal();
             }
-            l.lock.unlock();
+            if (((ReentrantLock)(l.lock)).isLocked())
+                l.lock.unlock();
         } catch (Exception e) {
             e.printStackTrace();
         }
