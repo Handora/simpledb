@@ -92,7 +92,7 @@ public class BTreeFileInsertTest extends SimpleDbTestBase {
 				empty.insertTuple(tid, tup);
 				// BTreeChecker.checkRep(empty, tid, new HashMap<PageId, Page>(), true);
 			}
-			// System.out.print(i);
+
 		}
 
 		BTreeChecker.checkRep(empty, tid, new HashMap<PageId, Page>(), true);

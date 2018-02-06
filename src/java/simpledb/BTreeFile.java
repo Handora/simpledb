@@ -331,7 +331,7 @@ public class BTreeFile implements DbFile {
 				BTreeInternalPage parent = this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), trueTuple.getField(this.keyField));
 
 				parent.insertEntry(new BTreeEntry(trueTuple.getField(this.keyField), page.getId(), newLeaf.getId()));
-
+			  updateParentPointers(tid, dirtypages, parent);
 
         return choosen;
 	}
@@ -372,11 +372,10 @@ public class BTreeFile implements DbFile {
 		// should be inserted.
 			BTreeInternalPage newInternal = (BTreeInternalPage)getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 			int maxEntry = page.getMaxEntries();
-			int rightEntries = maxEntry / 2;
 			int i = 0;
 			Iterator<BTreeEntry> it = page.reverseIterator();
 
-			while (i < rightEntries) {
+			while (i < maxEntry / 2) {
 					BTreeEntry e = it.next();
 					page.deleteKeyAndRightChild(e);
 					newInternal.insertEntry(e);
@@ -391,11 +390,12 @@ public class BTreeFile implements DbFile {
 					choosen = newInternal;
 			}
 
-			BTreeInternalPage parent = this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), push.getKey());
-			parent.insertEntry(new BTreeEntry(push.getKey(), page.getId(), newInternal.getId()));
-			updateParentPointers(tid, dirtypages, parent);
 			updateParentPointers(tid, dirtypages, page);
 			updateParentPointers(tid, dirtypages, newInternal);
+			BTreeInternalPage parent = this.getParentWithEmptySlots(tid, dirtypages, page.getParentId(), push.getKey());
+
+			parent.insertEntry(new BTreeEntry(push.getKey(), page.getId(), newInternal.getId()));
+			updateParentPointers(tid, dirtypages, parent);
 
       return choosen;
 	}
