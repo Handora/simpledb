@@ -8,7 +8,6 @@ import java.util.*;
  * single column.
  */
 public class Aggregate extends Operator {
-
     private static final long serialVersionUID = 1L;
 
     private OpIterator child;
