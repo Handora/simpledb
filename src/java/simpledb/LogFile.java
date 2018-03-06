@@ -4,7 +4,6 @@ package simpledb;
 import java.io.*;
 import java.util.*;
 import java.lang.reflect.*;
-import java.lang.Math;
 
 /**
 LogFile implements the recovery subsystem of SimpleDb.  This class is
@@ -581,34 +580,32 @@ public class LogFile {
                   raf.seek(record);
                   int recordType = raf.readInt();
                   Long recordTid = raf.readLong();
-                  if (recordType != UPDATE_RECORD) {
-                      switch (recordType) {
-                      case BEGIN_RECORD:
-                        ATT.put(recordTid, record);
-                        break;
-                      case COMMIT_RECORD:
-                        ATT.remove(recordTid);
-                        break;
-                      case ABORT_RECORD:
-                        ATT.remove(recordTid);
-                        break;
-                      case CHECKPOINT_RECORD:
-                        throw new RuntimeException("checkpoint shouldn't appear There");
-                      case REDOONLY_RECORD:
-                        Page afterImage = readPageData(raf);
-                        Database.getCatalog().getDatabaseFile(afterImage.getId().getTableId()).writePage(afterImage);
-                        break;
-                      default:
-                        throw new RuntimeException("Erro page type");
-                      }
-                      record = raf.getFilePointer() + LONG_SIZE;
-                      continue;
-                  }
-                  readPageData(raf);
-                  Page afterImage = readPageData(raf);
-                  Database.getCatalog().getDatabaseFile(afterImage.getId().getTableId()).writePage(afterImage);
-                  record = raf.getFilePointer() + LONG_SIZE;
 
+                  switch (recordType) {
+                  case BEGIN_RECORD:
+                    ATT.put(recordTid, record);
+                    break;
+                  case COMMIT_RECORD:
+                    ATT.remove(recordTid);
+                    break;
+                  case ABORT_RECORD:
+                    ATT.remove(recordTid);
+                    break;
+                  case CHECKPOINT_RECORD:
+                    throw new RuntimeException("checkpoint shouldn't appear There");
+                  case REDOONLY_RECORD:
+                    Page afterImage = readPageData(raf);
+                    Database.getCatalog().getDatabaseFile(afterImage.getId().getTableId()).writePage(afterImage);
+                    break;
+                  case UPDATE_RECORD:
+                    readPageData(raf);
+                    Page after = readPageData(raf);
+                    Database.getCatalog().getDatabaseFile(after.getId().getTableId()).writePage(after);
+                    break;
+                  default:
+                    throw new RuntimeException("Erro page type");
+                  }
+                  record = raf.getFilePointer() + LONG_SIZE;
               }
 
               // undo part
