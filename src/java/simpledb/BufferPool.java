@@ -301,6 +301,7 @@ public class BufferPool {
         // TODO:
         //   how should we deal with rangelock or inserted file in HeapFile.java
         Set<PageId> pids = manager.getTransactionPid(tid);
+
         if (pids == null) {
             return ;
         }
@@ -308,7 +309,18 @@ public class BufferPool {
             for (PageId pid: pids) {
                 manager.unlock(tid, pid);
                 if (commit) {
+                    // TODO:
+                    // can we just use buffer.find, and not lock all?
+                    Page p = buffer.find(pid).getPage();
+
                     this.flushPage(pid);
+
+                    // added because lab6
+                    // use current page contents as the before-image
+                    // for the next transaction that modifies this page.
+                    p.setBeforeImage();
+
+                    // After an update is committed, a page's before-image needs to be updated
                 } else {
                     this.discardPage(pid);
                 }
@@ -414,6 +426,12 @@ public class BufferPool {
         for (Page v: a) {
             if (v.isDirty() != null) {
                 DbFile h = Database.getCatalog().getDatabaseFile(v.getId().getTableId());
+                TransactionId dirtier = v.isDirty();
+
+                // should also put int in flushAllPages for
+                // the correctness of systest logtest
+                Database.getLogFile().logWrite(dirtier, v.getBeforeImage(), v);
+                Database.getLogFile().force();
                 h.writePage(v);
                 v.markDirty(false, null);
             }
@@ -432,9 +450,7 @@ public class BufferPool {
         // some code goes here
         // not necessary for lab1
         PageBuffer pb = buffer.find(pid);
-        if (pb == null) {
-            return ;
-        } else {
+        if (pb != null) {
             try {
                 buffer.delete(pb);
             } catch(DbException e) {
@@ -448,17 +464,25 @@ public class BufferPool {
      * Flushes a certain page to disk
      * @param pid an ID indicating the page to flush
      */
-    private synchronized  void flushPage(PageId pid) throws IOException {
+    private synchronized void flushPage(PageId pid) throws IOException {
         // some code goes here
         // not necessary for lab1
         PageBuffer pb = buffer.find(pid);
-        if (pb == null) {
-            return ;
-        } else {
+        if (pb != null) {
             if (pb.getPage().isDirty() != null) {
                 DbFile h = Database.getCatalog().getDatabaseFile(pid.getTableId());
-                h.writePage(pb.getPage());
-                pb.getPage().markDirty(false, null);
+
+                // added because of lab6
+                // append an update record to the log, with
+                // a before-image and after-image.
+                Page p = pb.getPage();
+                TransactionId dirtier = p.isDirty();
+
+                Database.getLogFile().logWrite(dirtier, p.getBeforeImage(), p);
+                Database.getLogFile().force();
+
+                h.writePage(p);
+                p.markDirty(false, null);
             }
         }
     }

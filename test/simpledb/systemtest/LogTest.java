@@ -260,7 +260,7 @@ public class LogTest extends SimpleDbTestBase {
 
         // *** Test:
         // crash and recover: data should still not be there
-
+        // Database.getLogFile().print();
         crash();
 
         t = new Transaction();

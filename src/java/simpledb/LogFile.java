@@ -4,6 +4,7 @@ package simpledb;
 import java.io.*;
 import java.util.*;
 import java.lang.reflect.*;
+import java.lang.Math;
 
 /**
 LogFile implements the recovery subsystem of SimpleDb.  This class is
@@ -82,6 +83,7 @@ public class LogFile {
     static final int UPDATE_RECORD = 3;
     static final int BEGIN_RECORD = 4;
     static final int CHECKPOINT_RECORD = 5;
+    static final int REDOONLY_RECORD = 6;
     static final long NO_CHECKPOINT_ID = -1;
 
     final static int INT_SIZE = 4;
@@ -105,7 +107,7 @@ public class LogFile {
         @param f The log file's name
     */
     public LogFile(File f) throws IOException {
-	this.logFile = f;
+        this.logFile = f;
         raf = new RandomAccessFile(f, "rw");
         recoveryUndecided = true;
 
@@ -138,7 +140,7 @@ public class LogFile {
     public synchronized int getTotalRecords() {
         return totalRecords;
     }
-    
+
     /** Write an abort record to the log for the specified tid, force
         the log to disk, and perform a rollback
         @param tid The aborting transaction.
@@ -194,7 +196,7 @@ public class LogFile {
 
         @see simpledb.Page#getBeforeImage
     */
-    public  synchronized void logWrite(TransactionId tid, Page before,
+    public synchronized void logWrite(TransactionId tid, Page before,
                                        Page after)
         throws IOException  {
         Debug.log("WRITE, offset = " + raf.getFilePointer());
@@ -426,6 +428,10 @@ public class LogFile {
                         logNew.writeLong((xoffset - minLogRecord) + LONG_SIZE);
                     }
                     break;
+                case REDOONLY_RECORD:
+                    Page p = readPageData(raf);
+                    writePageData(logNew, p);
+                    break;
                 case BEGIN_RECORD:
                     tidToFirstLogRecord.put(record_tid,newStart);
                     break;
@@ -466,7 +472,57 @@ public class LogFile {
         synchronized (Database.getBufferPool()) {
             synchronized(this) {
                 preAppend();
-                // some code goes here
+
+                // TODO
+                // CLR is also recommanded
+
+                Long record = tidToFirstLogRecord.get(tid.getId());
+                while (record < raf.length()) {
+                    raf.seek(record);
+                    int recordType = raf.readInt();
+                    Long recordTid = raf.readLong();
+                    if (recordType != UPDATE_RECORD || recordTid != tid.getId()) {
+                        long off = 0;
+                        switch (recordType) {
+                            case UPDATE_RECORD:
+                                readPageData(raf);
+                                readPageData(raf);
+                                break;
+                            case CHECKPOINT_RECORD:
+                                int numXactions = raf.readInt();
+                                off += numXactions * 2 * LONG_SIZE;
+                                break;
+                            case REDOONLY_RECORD:
+                                readPageData(raf);
+                                break;
+                            case BEGIN_RECORD:
+                                break;
+                            case COMMIT_RECORD:
+                                break;
+                            case ABORT_RECORD:
+                                break;
+                            default:
+                                throw new RuntimeException("Erro page type");
+                        }
+                        record = raf.getFilePointer() + off + LONG_SIZE;
+                        continue;
+                    }
+                    Page beforeImage = readPageData(raf);
+                    Database.getCatalog().getDatabaseFile(beforeImage.getId().getTableId()).writePage(beforeImage);
+                    Database.getBufferPool().discardPage(beforeImage.getId());
+                    readPageData(raf);
+                    raf.readLong();
+                    record = raf.getFilePointer();
+                    raf.seek(currentOffset);
+                    preAppend();
+                    raf.writeInt(REDOONLY_RECORD);
+                    raf.writeLong(tid.getId());
+
+                    writePageData(raf, beforeImage);
+                    raf.writeLong(currentOffset);
+                    currentOffset = raf.getFilePointer();
+                }
+                raf.seek(this.currentOffset);
             }
         }
     }
@@ -490,17 +546,179 @@ public class LogFile {
         updates of uncommitted transactions are not installed.
     */
     public void recover() throws IOException {
-        synchronized (Database.getBufferPool()) {
-            synchronized (this) {
-                recoveryUndecided = false;
-                // some code goes here
-            }
-         }
+      synchronized (Database.getBufferPool()) {
+          synchronized (this) {
+              recoveryUndecided = false;
+              // some code goes here
+
+              // validate part
+              currentOffset = raf.length();
+              raf.seek(0);
+              HashMap<Long, Long> ATT = new HashMap<>();
+              Long lastCheckpoint = raf.readLong();
+              if (lastCheckpoint != NO_CHECKPOINT_ID) {
+                  raf.seek(lastCheckpoint);
+                  int type = raf.readInt();
+                  Long tid = raf.readLong();
+
+                  if (type != CHECKPOINT_RECORD) {
+                    throw new RuntimeException("Wrong type check point");
+                  }
+
+                  int numXactions = raf.readInt();
+                  while (numXactions != 0) {
+                    numXactions--;
+                    long xid = raf.readLong();
+                    long xoffset = raf.readLong();
+                    ATT.put(xid, xoffset);
+                  }
+                  raf.readLong();
+              }
+
+              // redo part
+              Long record = raf.getFilePointer();
+              while (record < raf.length()) {
+                  raf.seek(record);
+                  int recordType = raf.readInt();
+                  Long recordTid = raf.readLong();
+                  if (recordType != UPDATE_RECORD) {
+                      switch (recordType) {
+                      case BEGIN_RECORD:
+                        ATT.put(recordTid, record);
+                        break;
+                      case COMMIT_RECORD:
+                        ATT.remove(recordTid);
+                        break;
+                      case ABORT_RECORD:
+                        ATT.remove(recordTid);
+                        break;
+                      case CHECKPOINT_RECORD:
+                        throw new RuntimeException("checkpoint shouldn't appear There");
+                      case REDOONLY_RECORD:
+                        Page afterImage = readPageData(raf);
+                        Database.getCatalog().getDatabaseFile(afterImage.getId().getTableId()).writePage(afterImage);
+                        break;
+                      default:
+                        throw new RuntimeException("Erro page type");
+                      }
+                      record = raf.getFilePointer() + LONG_SIZE;
+                      continue;
+                  }
+                  readPageData(raf);
+                  Page afterImage = readPageData(raf);
+                  Database.getCatalog().getDatabaseFile(afterImage.getId().getTableId()).writePage(afterImage);
+                  record = raf.getFilePointer() + LONG_SIZE;
+
+              }
+
+              // undo part
+              Long UndoStartPoint = raf.length();
+              for (Long o: ATT.values()) {
+                if (o < UndoStartPoint) {
+                  UndoStartPoint = o;
+                }
+              }
+
+              if (UndoStartPoint == raf.length()) {
+                UndoStartPoint = (long)LONG_SIZE;
+              }
+              record = UndoStartPoint;
+              while (record < raf.length()) {
+                  raf.seek(record);
+                  int recordType = raf.readInt();
+                  Long recordTid = raf.readLong();
+                  if (recordType != UPDATE_RECORD) {
+                      long off = 0;
+                      switch (recordType) {
+                      case CHECKPOINT_RECORD:
+                        int numXactions = raf.readInt();
+                        off = LONG_SIZE * numXactions * 2;
+                        break;
+                      case REDOONLY_RECORD:
+                        readPageData(raf);
+                        break;
+                      case BEGIN_RECORD:
+                        break;
+                      case COMMIT_RECORD:
+                        break;
+                      case ABORT_RECORD:
+                        break;
+                      default:
+                        throw new RuntimeException("Erro page type");
+                      }
+                      record = raf.getFilePointer() + LONG_SIZE + off;
+                      continue;
+                  }
+                  if (!ATT.containsKey(recordTid)) {
+                    readPageData(raf);
+                    readPageData(raf);
+                    record = raf.getFilePointer() + LONG_SIZE;
+                    continue;
+                  }
+                  Page beforeImage = readPageData(raf);
+                  Database.getCatalog().getDatabaseFile(beforeImage.getId().getTableId()).writePage(beforeImage);
+                  readPageData(raf);
+                  record = raf.getFilePointer() + LONG_SIZE;
+
+
+                  raf.seek(currentOffset);
+                  preAppend();
+                  raf.writeInt(REDOONLY_RECORD);
+                  raf.writeLong(recordTid);
+
+                  writePageData(raf, beforeImage);
+                  raf.writeLong(currentOffset);
+                  currentOffset = raf.getFilePointer();
+              }
+              raf.seek(currentOffset);
+          }
+       }
     }
 
     /** Print out a human readable represenation of the log */
     public void print() throws IOException {
         // some code goes here
+        raf.seek(0);
+        raf.readLong();
+        long record = LONG_SIZE;
+        while (record < raf.length()) {
+          raf.seek(record);
+          int recordType = raf.readInt();
+          Long recordTid = raf.readLong();
+          switch (recordType) {
+          case UPDATE_RECORD:
+            Page p = readPageData(raf);
+            readPageData(raf);
+            System.out.printf("%d UPDATE PAGE %d\n", recordTid, p.getId().hashCode());
+            break;
+          case CHECKPOINT_RECORD:
+            int numXactions = raf.readInt();
+            System.out.printf("CheckPoint start: \n");
+            for (int i=0; i<numXactions; i++) {
+              Long xid = raf.readLong();
+              Long xoff = raf.readLong();
+              System.out.printf("\t%d TXN\n", recordTid);
+            }
+            System.out.printf("CheckPoint end\n");
+            break;
+          case REDOONLY_RECORD:
+            readPageData(raf);
+            System.out.printf("%d REDOONLY\n", recordTid);
+            break;
+          case BEGIN_RECORD:
+            System.out.printf("%d BEGIN\n", recordTid);
+            break;
+          case COMMIT_RECORD:
+            System.out.printf("%d COMMIT\n", recordTid);
+            break;
+          case ABORT_RECORD:
+            System.out.printf("%d ABORT\n", recordTid);
+            break;
+          default:
+            throw new RuntimeException("Erro page type");
+          }
+          record = raf.getFilePointer() + LONG_SIZE;
+        }
     }
 
     public  synchronized void force() throws IOException {
