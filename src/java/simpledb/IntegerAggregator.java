@@ -122,7 +122,6 @@ public class IntegerAggregator implements Aggregator {
      */
 
     public IntegerAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
-        // some code goes here
         this.gbfield = gbfield;
         this.gbfieldtype = gbfieldtype;
         this.afield = afield;
@@ -223,7 +222,6 @@ public class IntegerAggregator implements Aggregator {
      *         the constructor.
      */
     public OpIterator iterator() {
-        // some code goes here
         Type[] ts;
         if (this.gbfield == NO_GROUPING || this.gbfieldtype == null) {
           ts = new Type[] { Type.INT_TYPE };

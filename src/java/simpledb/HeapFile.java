@@ -90,7 +90,6 @@ public class HeapFile implements DbFile {
      *            file.
      */
     public HeapFile(File f, TupleDesc td) {
-        // some code goes here
         this.file = f;
         this.schema = td;
     }
@@ -101,7 +100,6 @@ public class HeapFile implements DbFile {
      * @return the File backing this HeapFile on disk.
      */
     public File getFile() {
-        // some code goes here
         return file;
     }
 
@@ -115,7 +113,6 @@ public class HeapFile implements DbFile {
      * @return an ID uniquely identifying this HeapFile.
      */
     public int getId() {
-        // some code goes here
     	  return file.getAbsoluteFile().hashCode();
     }
 
@@ -125,13 +122,11 @@ public class HeapFile implements DbFile {
      * @return TupleDesc of this DbFile.
      */
     public TupleDesc getTupleDesc() {
-        // some code goes here
     	  return schema;
     }
 
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
-        // some code goes here
       	if (pid.getTableId() != getId() || pid.getPageNumber() >= numPages())
       	    return null;
 
@@ -153,7 +148,6 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public void writePage(Page page) throws IOException {
-        // some code goes here
         // not necessary for lab1
         int pageNo = page.getId().getPageNumber();
         int offset = pageNo * BufferPool.getPageSize();
@@ -167,7 +161,6 @@ public class HeapFile implements DbFile {
      * Returns the number of pages in this HeapFile.
      */
     public int numPages() {
-        // some code goes here
         return (int)this.file.length() / BufferPool.getPageSize()
                 + ((int)this.file.length() % BufferPool.getPageSize() == 0 ? 0:1);
     }
@@ -175,7 +168,6 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
             throws DbException, IOException, TransactionAbortedException {
-        // some code goes here
         // not necessary for lab1
         int len = numPages();
         int i;
@@ -206,7 +198,6 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public ArrayList<Page> deleteTuple(TransactionId tid, Tuple t) throws DbException,
             TransactionAbortedException {
-        // some code goes here
         // not necessary for lab1
         HeapPage p = (HeapPage)Database.getBufferPool().getPage(tid, t.getRecordId().getPageId(), Permissions.READ_WRITE);
         if (p == null)
@@ -219,7 +210,6 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
-        // some code goes here
         return new HeapIterator(tid);
     }
 

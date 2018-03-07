@@ -27,7 +27,6 @@ public class IntJoinHistogram {
      * @param max The maximum integer value that will ever be passed to this class for histogramming
      */
     public IntJoinHistogram(int buckets, int min, int max) {
-      	// some code goes here
         this.numBuckets = buckets;
         this.max = max;
         this.min = min;
@@ -41,7 +40,6 @@ public class IntJoinHistogram {
      * @param v Value to add to the histogram
      */
     public void addValue(int v) {
-      	// some code goes here
         if (v > max || v < min) {
           return ;
         }
@@ -60,7 +58,6 @@ public class IntJoinHistogram {
      * @return Predicted selectivity of this particular operator and value
      */
     public double estimateSelectivity(Predicate.Op op, int v) {
-    	// some code goes here
 
         int index = (v-this.min)/this.numPerBuckets;
         if (op.equals(Predicate.Op.EQUALS)) {
@@ -138,7 +135,6 @@ public class IntJoinHistogram {
      * @return A string describing this histogram, for debugging purposes
      */
     public String toString() {
-        // some code goes here
         String s = "";
         s += "[" + this.numBuckets + ", " + this.numPerBuckets + "]";
         if (this.numBuckets == 0) {

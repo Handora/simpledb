@@ -674,7 +674,6 @@ public class LogFile {
 
     /** Print out a human readable represenation of the log */
     public void print() throws IOException {
-        // some code goes here
         raf.seek(0);
         raf.readLong();
         long record = LONG_SIZE;

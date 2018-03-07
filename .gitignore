@@ -10,3 +10,4 @@ log
 driver
 *.iml
 *.db
+javadoc

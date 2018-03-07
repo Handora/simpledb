@@ -164,7 +164,6 @@ public class JoinOptimizer {
             String field2PureName, int card1, int card2, boolean t1pkey,
             boolean t2pkey, Map<String, TableStats> stats,
             Map<String, Integer> tableAliasToId) {
-        // some code goes here
 
         // Use simple heuristic
         if (joinOp == Predicate.Op.EQUALS || joinOp == Predicate.Op.NOT_EQUALS) {

@@ -24,7 +24,6 @@ public class Delete extends Operator {
      *            The child operator from which to read tuples for deletion
      */
     public Delete(TransactionId t, OpIterator child) {
-        // some code goes here
         this.tid = t;
         this.child = child;
         Type[] ts = new Type[1];
@@ -33,26 +32,22 @@ public class Delete extends Operator {
     }
 
     public TupleDesc getTupleDesc() {
-        // some code goes here
         return this.schema;
     }
 
     public void open() throws DbException, TransactionAbortedException {
-        // some code goes here
         child.open();
         super.open();
         this.first = true;
     }
 
     public void close() {
-        // some code goes here
         child.close();
         super.close();
         this.first = false;
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
-        // some code goes here
         close();
         open();
     }
@@ -67,7 +62,6 @@ public class Delete extends Operator {
      * @see BufferPool#deleteTuple
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
-        // some code goes here
         if (!this.first) {
             return null;
         }
@@ -90,13 +84,11 @@ public class Delete extends Operator {
 
     @Override
     public OpIterator[] getChildren() {
-        // some code goes here
         return new OpIterator[]{this.child};
     }
 
     @Override
     public void setChildren(OpIterator[] children) {
-        // some code goes here
         if (children.length < 1) {
           return ;
         }

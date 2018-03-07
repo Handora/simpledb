@@ -82,7 +82,6 @@ public class StringAggregator implements Aggregator {
      */
 
     public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
-        // some code goes here
         this.gbfield = gbfield;
         this.gbfieldtype = gbfieldtype;
         this.afield = afield;
@@ -95,7 +94,6 @@ public class StringAggregator implements Aggregator {
      * @param tup the Tuple containing an aggregate field and a group-by field
      */
     public void mergeTupleIntoGroup(Tuple tup) {
-        // some code goes here
         // TODO:
         //     clean code
         // some code goes here
@@ -130,7 +128,6 @@ public class StringAggregator implements Aggregator {
      *   aggregate specified in the constructor.
      */
     public OpIterator iterator() {
-        // some code goes here
         Type[] ts;
         if (this.gbfield == NO_GROUPING || this.gbfieldtype == null) {
           ts = new Type[] { Type.INT_TYPE };

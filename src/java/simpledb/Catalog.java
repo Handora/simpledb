@@ -38,7 +38,6 @@ public class Catalog {
 
 
     public Catalog() {
-        // some code goes here
       	if (tables == null)
       	    tables = new ConcurrentHashMap<Integer, Table>();
     }
@@ -53,7 +52,6 @@ public class Catalog {
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
-        // some code goes here
 	      tables.put(file.getId(), new Table(file, name, pkeyField));
     }
 
@@ -77,7 +75,6 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public int getTableId(String name) throws NoSuchElementException {
-        // some code goes here
       	if (name == null)
       	    throw new NoSuchElementException("No such exception");
 
@@ -96,7 +93,6 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
-        // some code goes here
       	if (tables.get(tableid) != null)
       	    return tables.get(tableid).file.getTupleDesc();
       	throw new NoSuchElementException("No such element");
@@ -109,26 +105,22 @@ public class Catalog {
      *     function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
-        // some code goes here
       	if (tables.get(tableid) != null)
       	    return tables.get(tableid).file;
         throw new NoSuchElementException("No such element");
     }
 
     public String getPrimaryKey(int tableid) {
-        // some code goes here
       	if (tables.get(tableid) != null)
       	    return tables.get(tableid).primaryKey;
         return null;
     }
 
     public Iterator<Integer> tableIdIterator() {
-        // some code goes here
         return tables.keySet().iterator();
     }
 
     public String getTableName(int id) {
-        // some code goes here
       	if (tables.get(id) != null)
       	    return tables.get(id).name;
       	return null;
@@ -136,7 +128,6 @@ public class Catalog {
 
     /** Delete all tables from the catalog */
     public void clear() {
-        // some code goes here
       	tables.clear();
     }
 

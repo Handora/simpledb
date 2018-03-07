@@ -42,7 +42,6 @@ public class TupleDesc implements Serializable {
      *        that are included in this TupleDesc
      * */
     public Iterator<TDItem> iterator() {
-        // some code goes here
         return schema.iterator();
     }
 
@@ -77,7 +76,6 @@ public class TupleDesc implements Serializable {
      *            TupleDesc. It must contain at least one entry.
      */
     public TupleDesc(Type[] typeAr) {
-        // some code goes here
         schema = new ArrayList<TDItem>();
         for (int i = 0; i < typeAr.length; i++) {
             schema.add(new TDItem(typeAr[i], null));
@@ -88,7 +86,6 @@ public class TupleDesc implements Serializable {
      * @return the number of fields in this TupleDesc
      */
     public int numFields() {
-        // some code goes here
         return schema.size();
     }
 
@@ -102,7 +99,6 @@ public class TupleDesc implements Serializable {
      *             if i is not a valid field reference.
      */
     public String getFieldName(int i) throws NoSuchElementException {
-        // some code goes here
         if (i >= numFields() || i < 0) {
             throw new NoSuchElementException("No such element");
         }
@@ -121,7 +117,6 @@ public class TupleDesc implements Serializable {
      *             if i is not a valid field reference.
      */
     public Type getFieldType(int i) throws NoSuchElementException {
-        // some code goes here
         if (i >= numFields() || i < 0) {
             throw new NoSuchElementException("No such element");
         }
@@ -139,7 +134,6 @@ public class TupleDesc implements Serializable {
      *             if no field with a matching name is found.
      */
     public int fieldNameToIndex(String name) throws NoSuchElementException {
-        // some code goes here
         if (schema == null || name == null)
 	        throw new NoSuchElementException("No such element");
 	    for (int i=0; i<numFields(); i++) {
@@ -156,7 +150,6 @@ public class TupleDesc implements Serializable {
      *         Note that tuples from a given TupleDesc are of a fixed size.
      */
     public int getSize() {
-        // some code goes here
 	    int sum = 0;
 	    for (TDItem t: schema) {
 	        sum += t.fieldType.getLen();
@@ -175,7 +168,6 @@ public class TupleDesc implements Serializable {
      * @return the new TupleDesc
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
-        // some code goes here
         Type[] ts = new Type[td1.numFields()+td2.numFields()];
         String[] ns = new String[td1.numFields()+td2.numFields()];
         for (int i=0; i<td1.numFields(); i++) {
@@ -202,7 +194,6 @@ public class TupleDesc implements Serializable {
      */
 
     public boolean equals(Object o) {
-        // some code goes here
         if (o == null)
             return false;
 
@@ -238,7 +229,6 @@ public class TupleDesc implements Serializable {
      * @return String describing this descriptor.
      */
     public String toString() {
-        // some code goes here
         String ret = "";
 
         for (int i=0; i<numFields(); i++) {

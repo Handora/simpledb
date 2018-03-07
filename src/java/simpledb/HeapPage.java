@@ -69,7 +69,6 @@ public class HeapPage implements Page {
         @return the number of tuples on this page
     */
     private int getNumTuples() {
-        // some code goes here
         return (BufferPool.getPageSize() * 8) / (td.getSize() * 8 + 1);
     }
 
@@ -78,7 +77,6 @@ public class HeapPage implements Page {
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
     private int getHeaderSize() {
-         // some code goes here
          return getNumTuples() / 8 +
 	         (getNumTuples() % 8 == 0 ? 0 : 1);
     }
@@ -112,7 +110,6 @@ public class HeapPage implements Page {
      * @return the PageId associated with this page.
      */
     public HeapPageId getId() {
-      	// some code goes here
       	return pid;
     }
 
@@ -244,7 +241,6 @@ public class HeapPage implements Page {
      * @param t The tuple to delete
      */
     public void deleteTuple(Tuple t) throws DbException {
-        // some code goes here
         // not necessary for lab1
         if (!t.getRecordId().getPageId().equals(this.pid)) {
             throw new DbException("pageId not matches");
@@ -265,7 +261,6 @@ public class HeapPage implements Page {
      * @param t The tuple to add.
      */
     public void insertTuple(Tuple t) throws DbException {
-        // some code goes here
         // not necessary for lab1
         if (getNumEmptySlots() <= 0) {
             throw new DbException("No empty slots");
@@ -289,7 +284,6 @@ public class HeapPage implements Page {
      * that did the dirtying
      */
     public void markDirty(boolean dirty, TransactionId tid) {
-        // some code goes here
 	      // not necessary for lab1
         this.dirty = dirty;
         if (dirty == true)
@@ -302,7 +296,6 @@ public class HeapPage implements Page {
      * Returns the tid of the transaction that last dirtied this page, or null if the page is not dirty
      */
     public TransactionId isDirty() {
-        // some code goes here
 	      // Not necessary for lab1
         if (dirty == true)
           return dirtyingTid;
@@ -314,7 +307,6 @@ public class HeapPage implements Page {
      * Returns the number of empty slots on this page.
      */
     public int getNumEmptySlots() {
-        // some code goes here
       	// TODO:
       	//      better approach
       	int sum = 0;
@@ -329,7 +321,6 @@ public class HeapPage implements Page {
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
-        // some code goes here
       	int nslot = i / 8;
       	int noffset = i % 8;
 
@@ -340,7 +331,6 @@ public class HeapPage implements Page {
      * Abstraction to fill or clear a slot on this page.
      */
     private void markSlotUsed(int i, boolean value) {
-        // some code goes here
         // not necessary for lab1
         int nslot = i / 8;
         int noffset = i % 8;
@@ -356,7 +346,6 @@ public class HeapPage implements Page {
      * (note that this iterator shouldn't return tuples in empty slots!)
      */
     public Iterator<Tuple> iterator() {
-        // some code goes here
       	ArrayList<Tuple> tps = new ArrayList<>();
       	for (int i=0; i<numSlots; i++) {
       	    int n = i / 8; // num
