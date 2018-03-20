@@ -558,7 +558,7 @@ public class LogFile {
               if (lastCheckpoint != NO_CHECKPOINT_ID) {
                   raf.seek(lastCheckpoint);
                   int type = raf.readInt();
-                  Long tid = raf.readLong();
+                  raf.readLong();
 
                   if (type != CHECKPOINT_RECORD) {
                     throw new RuntimeException("Wrong type check point");
@@ -691,8 +691,8 @@ public class LogFile {
             int numXactions = raf.readInt();
             System.out.printf("CheckPoint start: \n");
             for (int i=0; i<numXactions; i++) {
-              Long xid = raf.readLong();
-              Long xoff = raf.readLong();
+              raf.readLong();
+              raf.readLong();
               System.out.printf("\t%d TXN\n", recordTid);
             }
             System.out.printf("CheckPoint end\n");

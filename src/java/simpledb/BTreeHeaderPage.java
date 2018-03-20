@@ -139,13 +139,11 @@ public class BTreeHeaderPage implements Page {
 		// write out the next and prev pointers
 		try {
 			dos.writeInt(nextPage);
-
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		try {
 			dos.writeInt(prevPage);
-
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

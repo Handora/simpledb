@@ -22,7 +22,6 @@ public class Catalog {
      * Constructor.
      * Creates a new, empty catalog.
      */
-
     private  class Table {
       	DbFile file;
       	String name;
@@ -35,7 +34,6 @@ public class Catalog {
       	}
     }
     Map<Integer, Table> tables = null;
-
 
     public Catalog() {
       	if (tables == null)
@@ -139,7 +137,7 @@ public class Catalog {
         String line = "";
         String baseFolder=new File(new File(catalogFile).getAbsolutePath()).getParent();
         try {
-            BufferedReader br = new BufferedReader(new FileReader(new File(catalogFile)));
+        	BufferedReader br = new BufferedReader(new FileReader(new File(catalogFile)));
 
             while ((line = br.readLine()) != null) {
                 //assume line is of the format name (field type, field type, ...)
@@ -177,6 +175,7 @@ public class Catalog {
                 addTable(tabHf,name,primaryKey);
                 System.out.println("Added table : " + name + " with schema " + t);
             }
+            br.close();
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(0);

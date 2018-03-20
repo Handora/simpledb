@@ -140,15 +140,15 @@ public class BTreeRootPtrPage implements Page {
 
 	/** Return a view of this page before it was modified
         -- used by recovery */
-	public BTreeRootPtrPage getBeforeImage(){
-		try {
-			return new BTreeRootPtrPage(pid,oldData);
-		} catch (IOException e) {
-			e.printStackTrace();
-			//should never happen -- we parsed it OK before!
-			System.exit(1);
-		}
-		return null;
+  	public BTreeRootPtrPage getBeforeImage(){
+	  try {
+	    return new BTreeRootPtrPage(pid,oldData);
+	  } catch (IOException e) {
+	    e.printStackTrace();
+	    //should never happen -- we parsed it OK before!
+	    System.exit(1);
+	  }
+	  return null;
 	}
 
 	/**

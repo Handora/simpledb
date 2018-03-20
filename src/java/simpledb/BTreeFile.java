@@ -197,7 +197,6 @@ public class BTreeFile implements DbFile {
 				if (pid.pgcateg() != BTreePageId.LEAF && pid.pgcateg() != BTreePageId.INTERNAL) {
 						throw new DbException("find wrong type page(should be leaf or internal)");
 				}
-				LockManager manager = Database.getBufferPool().manager;
 
 				while (pid.pgcateg() == BTreePageId.INTERNAL) {
 						BTreeInternalPage bp = (BTreeInternalPage)getPage(tid, dirtypages, pid, Permissions.READ_ONLY);

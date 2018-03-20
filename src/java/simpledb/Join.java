@@ -24,7 +24,7 @@ public class Join extends Operator {
      * @param child2
      *            Iterator for the right(inner) relation to join
      */
-     Join(JoinPredicate p, OpIterator child1, OpIterator child2) {
+     public Join(JoinPredicate p, OpIterator child1, OpIterator child2) {
         this.p = p;
         this.child1 = child1;
         this.child2 = child2;
